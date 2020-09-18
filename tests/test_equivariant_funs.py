@@ -1,8 +1,39 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
+def test_Backflow():
+    from MLP import MLP
+    from equivariant_funs import Backflow
+    from utils import divergence
+    import time
+
+    D_hidden = 100
+    eta = MLP(1, D_hidden)
+    v = Backflow(eta)
+
+    batch, n, dim = 100, 20, 3
+    x = torch.randn(batch, n, dim, requires_grad=True)
+    output = v(x)
+    assert output.shape == (batch, n, dim)
+    P = torch.randperm(n)
+    Px = x[:, P, :]
+    Poutput = v(Px)
+    assert torch.allclose(Poutput, output[:, P, :])
+
+    start = time.time()
+    div = divergence(v, x)
+    print("Computed div. time:", time.time() - start)
+
+    start = time.time()
+    div_direct = v.divergence(x)
+    print("Computed div_direct. time:", time.time() - start)
+
+    assert div_direct.shape == (batch,)
+    assert torch.allclose(div, div_direct)
+
 def test_FermiNet():
     from equivariant_funs import FermiNet
+
     batch, n, dim = 10, 5, 3
     L = 6
     spsize, tpsize = 7, 15

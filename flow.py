@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     cnf = CNF(freebosonho, v, t_span, pair_potential, sp_potential=sp_potential)
     
-    batch = 100
+    batch = 1000
     #cnf.check_reversibility(batch)
 
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)

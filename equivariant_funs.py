@@ -1,6 +1,37 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
+class Backflow(torch.nn.Module):
+    """
+        The backflow transformation that generates the collective coordinates
+    {R_i} from the original ones {r_i}, where i = 1, ..., n, n being the total 
+    particle number, and both R_i and r_i are dim-dimensional vectors, dim being 
+    the space dimension. The transformation reads
+        R_i = \sum_{j neq i} \eta(|r_i - r_j|) * (r_i - r_j).
+    where \eta is any univariate, scalar-valued function, possibly with some parameters. 
+
+        It is easy to see that this transformation indeed serves as an equivariant 
+    function respect to any permutation of particle positions.
+    """
+    def __init__(self, eta):
+        super(Backflow, self).__init__()
+        self.eta = eta
+
+    def forward(self, x):
+        rij = x[:, :, None] - x[:, None]
+        dij = rij.norm(dim=-1, keepdim=True)
+        return (self.eta(dij) * rij).sum(dim=-2)
+
+    def divergence(self, x):
+        _, n, dim = x.shape
+        row_indices, col_indices = torch.triu_indices(n, n, offset=1)
+
+        rij = x[:, :, None] - x[:, None]
+        dij = rij.norm(dim=-1, keepdim=True)[:, row_indices, col_indices, :]
+        eta, d_eta = self.eta(dij), self.eta.grad(dij)
+        div = 2 * (d_eta * dij + dim * eta).sum(dim=(-2, -1))
+        return div
+
 class FermiNet(torch.nn.Module):
     """
         The "backflow" part of the FermiNet architecture. For details, see
