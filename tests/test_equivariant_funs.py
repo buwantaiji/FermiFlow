@@ -7,11 +7,12 @@ def test_Backflow():
     from utils import divergence
     import time
 
+    print("\n---- Backflow test ----")
     D_hidden = 100
     eta = MLP(1, D_hidden)
     v = Backflow(eta)
 
-    batch, n, dim = 100, 20, 3
+    batch, n, dim = 1000, 10, 3
     x = torch.randn(batch, n, dim, requires_grad=True)
     output = v(x)
     assert output.shape == (batch, n, dim)
@@ -22,11 +23,11 @@ def test_Backflow():
 
     start = time.time()
     div = divergence(v, x)
-    print("Computed div. time:", time.time() - start)
+    print("div time:", time.time() - start)
 
     start = time.time()
     div_direct = v.divergence(x)
-    print("Computed div_direct. time:", time.time() - start)
+    print("div_direct time:", time.time() - start)
 
     assert div_direct.shape == (batch,)
     assert torch.allclose(div, div_direct)
@@ -38,7 +39,7 @@ def test_FermiNet():
     L = 6
     spsize, tpsize = 7, 15
 
-    print("\n---- FermiNet test---")
+    print("\n---- FermiNet test ----")
     print("n = %d, L = %d, dim = %d, spsize = %d, tpsize = %d" % (n, L, dim, spsize, tpsize))
 
     net = FermiNet(n, dim, L, spsize, tpsize)

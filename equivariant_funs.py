@@ -8,12 +8,13 @@ class Backflow(torch.nn.Module):
     particle number, and both R_i and r_i are dim-dimensional vectors, dim being 
     the space dimension. The transformation reads
         R_i = \sum_{j neq i} \eta(|r_i - r_j|) * (r_i - r_j).
-    where \eta is any univariate, scalar-valued function, possibly with some parameters. 
+    where \eta is any UNIVARIATE, SCALAR-VALUED function, possibly with some parameters. 
 
         It is easy to see that this transformation indeed serves as an equivariant 
     function respect to any permutation of particle positions.
     """
     def __init__(self, eta):
+        """ The argument eta must be an instance of torch.nn.Module. """
         super(Backflow, self).__init__()
         self.eta = eta
 
@@ -23,6 +24,14 @@ class Backflow(torch.nn.Module):
         return (self.eta(dij) * rij).sum(dim=-2)
 
     def divergence(self, x):
+        """
+            The divergence is derived and coded by hand to avoid the computational
+        overhead in CNF. The result is:
+            div = \sum_{i neq j}^{n} ( \eta^prime(|r_i - r_j|) * |r_i - r_j|
+                                        + dim * \eta(|r_i - r_j|) ).
+        where \eta^prime denotes the derivative of the function \eta, n is the total
+        particle number, and dim is the space dimension.
+        """
         _, n, dim = x.shape
         row_indices, col_indices = torch.triu_indices(n, n, offset=1)
 
