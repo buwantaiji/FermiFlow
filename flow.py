@@ -35,11 +35,8 @@ class CNF(torch.nn.Module):
                 super(F, self).__init__()
                 self.v = v
             def forward(self, t, x_and_logp):
-                from utils import divergence
-                with torch.enable_grad():
-                    x, _ = x_and_logp
-                    x.requires_grad_(True)
-                    return self.v(x), - divergence(self.v, x, create_graph=True)
+                x, _ = x_and_logp
+                return self.v(x), -self.v.divergence(x)
         self.f = F(v)
 
         self.t_span = t_span
@@ -94,33 +91,36 @@ class CNF(torch.nn.Module):
 
 if __name__ == "__main__":
     from base_dist import FreeBosonHO
+
+    from MLP import MLP
+    from equivariant_funs import Backflow
     #from equivariant_funs import FermiNet
-    from drift import Drift
+
     from potentials import HO, GaussianPairPotential
 
     n, dim = 4, 2
 
     freebosonho = FreeBosonHO(n, dim)
 
-    #L, spsize, tpsize = 4, 20, 15
-    L, spsize, tpsize = 2, 16, 8
+    D_hidden = 100
+    eta = MLP(1, D_hidden)
+    v = Backflow(eta)
+    #L, spsize, tpsize = 2, 16, 8
     #v = FermiNet(n, dim, L, spsize, tpsize)
-    v = Drift(L, spsize, tpsize, n, dim)
-    v.set_time(0.0)
 
     t_span = (0., 1.)
 
     sp_potential = HO()
-    g, s = 3.0, 0.5
+    g, s = 5.0, 0.5
     pair_potential = GaussianPairPotential(g, s)
 
     cnf = CNF(freebosonho, v, t_span, pair_potential, sp_potential=sp_potential)
     
-    batch = 1000
+    batch = 8000
     #cnf.check_reversibility(batch)
 
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
-    iter_num = 50
+    iter_num = 100
     for i in range(iter_num):
         gradE = cnf(batch)
         optimizer.zero_grad()

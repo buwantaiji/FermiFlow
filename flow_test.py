@@ -20,11 +20,8 @@ class CNF(torch.nn.Module):
                 super(F, self).__init__()
                 self.v = v
             def forward(self, t, x_and_logp):
-                from utils import divergence
-                with torch.enable_grad():
-                    x, _ = x_and_logp
-                    x.requires_grad_(True)
-                    return self.v(x), - divergence(self.v, x, create_graph=True)
+                x, _ = x_and_logp
+                return self.v(x), -self.v.divergence(x)
         self.f = F(v)
 
         self.t_span = t_span
@@ -62,15 +59,17 @@ class CNF(torch.nn.Module):
         #print("Computed grad_logp.")
 
 if __name__ == "__main__":
+    from MLP import MLP
+    from equivariant_funs import Backflow
     #from equivariant_funs import FermiNet
-    from drift import Drift
 
     n, dim = 5, 2
 
-    L, spsize, tpsize = 2, 16, 8
+    D_hidden = 100
+    eta = MLP(1, D_hidden)
+    v = Backflow(eta)
+    #L, spsize, tpsize = 2, 16, 8
     #v = FermiNet(n, dim, L, spsize, tpsize)
-    v = Drift(L, spsize, tpsize, n, dim)
-    v.set_time(0.0)
 
     t_span = (0., 1.)
 
