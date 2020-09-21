@@ -47,21 +47,22 @@ class CNF(torch.nn.Module):
 
     def sample(self, sample_shape):
         z = self.basedist.sample(sample_shape)
-        x = solve_ivp_nnmodule(self.v_wrapper, self.t_span, z)
+        x = solve_ivp_nnmodule(self.v_wrapper, self.t_span, z, params_require_grad=False)
         return z, x
 
-    def logp(self, x):
+    def logp(self, x, params_require_grad=False):
         batch = x.shape[0]
         z, delta_logp = solve_ivp_nnmodule(self.f, self.t_span_inverse, 
-                        (x, torch.zeros(batch)))
+                    (x, torch.zeros(batch)), params_require_grad=params_require_grad)
         logp = self.basedist.log_prob(z) - delta_logp
         return logp
 
     def check_reversibility(self, batch):
         z, x = self.sample((batch,))
-        _, logp = solve_ivp_nnmodule(self.f, self.t_span, (z, self.basedist.log_prob(z)))
+        _, logp = solve_ivp_nnmodule(self.f, self.t_span, (z, self.basedist.log_prob(z)), 
+                                        params_require_grad=False)
         z_reverse, delta_logp = solve_ivp_nnmodule(self.f, self.t_span_inverse, 
-                        (x, torch.zeros(batch)))
+                        (x, torch.zeros(batch)), params_require_grad=False)
         logp_reverse = self.basedist.log_prob(z_reverse) - delta_logp
 
         print("MaxAbs of z_reverse - z:", (z_reverse - z).abs().max())
@@ -73,7 +74,9 @@ class CNF(torch.nn.Module):
         from utils import y_grad_laplacian
 
         z, x = self.sample((batch,))
-        x = x.detach().requires_grad_(True)
+        x.requires_grad_(True)
+
+        logp_full = self.logp(x, params_require_grad=True)
 
         logp, grad_logp, laplacian_logp = y_grad_laplacian(self.logp, x) 
         kinetic = - 1/4 * laplacian_logp - 1/8 * (grad_logp**2).sum(dim=(-2, -1))
@@ -85,7 +88,7 @@ class CNF(torch.nn.Module):
         Eloc = kinetic + potential
 
         self.E = Eloc.detach().mean().item()
-        gradE = (logp * Eloc.detach()).mean()
+        gradE = (logp_full * Eloc.detach()).mean()
         return gradE
 
 

@@ -136,7 +136,10 @@ def augmented_dynamics(f, xs_shapes_numels, params_require_grad):
                 f_values = self.f(t, xs)
                 forward_value = -sum( (adjoint_x * f_value).sum() 
                                 for adjoint_x, f_value in zip(adjoint_xs, f_values) )
-                vjp_xs = torch.autograd.grad(forward_value, xs, create_graph=True)
+                vjp_xs = torch.autograd.grad(forward_value, xs, 
+                                create_graph=True, allow_unused=True)
+                vjp_xs = tuple(vjp_x if vjp_x is not None else torch.zeros(shape) 
+                            for vjp_x, (shape, _) in zip(vjp_xs, xs_shapes_numels))
 
                 return f_values + vjp_xs
 
@@ -144,6 +147,7 @@ def augmented_dynamics(f, xs_shapes_numels, params_require_grad):
     return f_aug
 
 def solve_ivp_nnmodule(f, t_span, x0s, params_require_grad=True, rtol=1e-6, atol=1e-8):
+    print(params_require_grad, end=" ")
     if not isinstance(f, torch.nn.Module):
         raise ValueError("f is required to be an instance of torch.nn.Module.")
 
