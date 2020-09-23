@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     freebosonho = FreeBosonHO(n, dim)
 
-    D_hidden = 100
+    D_hidden = 200
     eta = MLP(1, D_hidden)
     v = Backflow(eta)
     #L, spsize, tpsize = 2, 16, 8
@@ -114,12 +114,12 @@ if __name__ == "__main__":
     t_span = (0., 1.)
 
     sp_potential = HO()
-    g, s = 5.0, 0.5
+    g, s = 9.0, 0.5
     pair_potential = GaussianPairPotential(g, s)
 
     cnf = CNF(freebosonho, v, t_span, pair_potential, sp_potential=sp_potential)
     
-    batch = 8000
+    batch = 1000
     #cnf.check_reversibility(batch)
 
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
