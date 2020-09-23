@@ -21,7 +21,7 @@ class Backflow(torch.nn.Module):
     def forward(self, x):
         n = x.shape[-2]
         rij = x[:, :, None] - x[:, None]
-        rij += torch.eye(n)[:, :, None]
+        rij += torch.eye(n, device=x.device)[:, :, None]
         dij = rij.norm(dim=-1, keepdim=True)
         return (self.eta(dij) * rij).sum(dim=-2)
 
