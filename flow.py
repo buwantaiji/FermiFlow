@@ -88,7 +88,7 @@ class CNF(torch.nn.Module):
         Eloc = kinetic + potential
 
         self.E = Eloc.detach().mean().item()
-        gradE = (logp_full * Eloc.detach()).mean()
+        gradE = (logp_full * (Eloc.detach() - self.E)).mean()
         return gradE
 
 
@@ -123,7 +123,8 @@ if __name__ == "__main__":
     #cnf.check_reversibility(batch)
 
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
-    iter_num = 100
+    iter_num = 200
+    print("iter_num:", iter_num)
     for i in range(iter_num):
         gradE = cnf(batch)
         optimizer.zero_grad()
