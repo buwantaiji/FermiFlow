@@ -1,6 +1,6 @@
 import torch
 torch.set_default_dtype(torch.float64)
-from NeuralODE_utils import *
+from .utils import *
 
 from scipy.integrate import solve_ivp
 

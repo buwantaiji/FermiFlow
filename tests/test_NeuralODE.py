@@ -6,7 +6,7 @@ def test_solveivp_function_1():
         A "single ODE" test. See https://github.com/rtqichen/torchdiffeq/issues/29.
         Normal python function version.
     """
-    from NeuralODE_function import solve_ivp_function
+    from NeuralODE.function import solve_ivp_function
 
     def f(t, x, a1, a2):
         return a1 * a2 * x
@@ -40,7 +40,7 @@ def test_solveivp_nnmodule_1():
         A "single ODE" test. See https://github.com/rtqichen/torchdiffeq/issues/29.
         torch.nn.Module version.
     """
-    from NeuralODE_nnModule import solve_ivp_nnmodule
+    from NeuralODE.nnModule import solve_ivp_nnmodule
 
     class F(torch.nn.Module):
         def __init__(self):
@@ -80,7 +80,7 @@ def test_solveivp_nnmodule_1():
     assert torch.allclose(dx0_onlyxs, torch.exp(f.a1 * f.a2 * t) * torch.ones(3, 4))
 
 def test_solveivp_function_2():
-    from NeuralODE_function import solve_ivp_function
+    from NeuralODE.function import solve_ivp_function
 
     def f(t, xs, a1, a2):
         x1, x2 = xs
@@ -116,7 +116,7 @@ def test_solveivp_function_2():
     assert torch.allclose(d3a2, -t**3 * x2t.sum())
 
 def test_solveivp_nnmodule_2():
-    from NeuralODE_nnModule import solve_ivp_nnmodule
+    from NeuralODE.nnModule import solve_ivp_nnmodule
 
     class F(torch.nn.Module):
         def __init__(self):

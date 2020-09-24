@@ -19,7 +19,7 @@ def normal_logp(x, mean, std):
 
 def test_normal():
     batch_shape = (2, 3, 5)
-    means = 10 * torch.arange(np.prod(batch_shape)).reshape(batch_shape)
+    means = 10 * torch.arange(np.prod(batch_shape), dtype=torch.float64).reshape(batch_shape)
     stds = torch.rand(batch_shape)
 
     dist = Normal(means, stds)

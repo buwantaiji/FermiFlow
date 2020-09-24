@@ -1,7 +1,7 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
-from NeuralODE_nnModule import solve_ivp_nnmodule
+from NeuralODE.nnModule import solve_ivp_nnmodule
 
 class CNF(torch.nn.Module):
     def __init__(self, v, t_span):
