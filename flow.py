@@ -115,7 +115,7 @@ if __name__ == "__main__":
     t_span = (0., 1.)
 
     sp_potential = HO()
-    g, s = 9.0, 0.5
+    g, s = 5.0, 0.5
     pair_potential = GaussianPairPotential(g, s)
 
     cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
@@ -126,10 +126,11 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
     iter_num = 200
+    print("g =", g, "batch =", batch)
     print("iter_num:", iter_num)
     for i in range(iter_num):
         gradE = cnf(batch)
         optimizer.zero_grad()
         gradE.backward()
         gradE = optimizer.step()
-        print("iter: %02d" % i, "Energy:", cnf.E)
+        print("iter: %03d" % i, "Energy:", cnf.E)
