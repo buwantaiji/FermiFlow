@@ -2,7 +2,7 @@ import torch
 torch.set_default_dtype(torch.float64)
 
 class BaseDist(object):
-    """ The base class of base distribution. """
+    """ The base class of base (i.e., prior) distribution. """
     def __init__(self, n, dim):
         """
             n: total particle numbers.
@@ -26,13 +26,14 @@ class FreeBosonHO(BaseDist):
             \psi_0(r) = 1 / pi^(d/4) * e^(-r^2/2).
     """
 
-    def __init__(self, n, dim):
+    def __init__(self, n, dim, device=torch.device("cpu")):
         from torch.distributions.normal import Normal
         from torch.distributions.independent import Independent
 
         super(FreeBosonHO, self).__init__(n, dim)
 
-        self.dist = Normal(torch.zeros(n, dim), (0.5 * torch.ones(n, dim)).sqrt())
+        self.dist = Normal(torch.zeros(n, dim, device=device), 
+                            (0.5 * torch.ones(n, dim, device=device)).sqrt())
         self.dist = Independent(self.dist, reinterpreted_batch_ndims=2)
 
         self.sample= self.dist.sample

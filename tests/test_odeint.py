@@ -93,9 +93,9 @@ def test_odeint_cnf():
     dist = Normal(torch.zeros(n, dim), (0.5 * torch.ones(n, dim)).sqrt())
     dist = Independent(dist, reinterpreted_batch_ndims=2)
 
-    ntests = 20
-
     z = dist.sample((batch,))
+
+    ntests = 20
 
     def scipy_time(f, t_span, x0s, ntests):
         start = time.time()

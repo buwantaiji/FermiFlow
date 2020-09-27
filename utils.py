@@ -54,12 +54,12 @@ def y_grad_laplacian(f, x):
     print("Computed logp.")
 
     grad_y_flatten, = torch.autograd.grad(y, x_flatten, 
-                            grad_outputs=torch.ones(batch), create_graph=True)
+                    grad_outputs=torch.ones(batch, device=x.device), create_graph=True)
     grad_y = grad_y_flatten.view_as(x)
     print("Computed grad_logp.")
 
     laplacian_y = sum( torch.autograd.grad(grad_y_flatten[:, i], x_flatten, 
-                        grad_outputs=torch.ones(batch), retain_graph=True)[0][:, i]
-                        for i in range(dim) )
+                    grad_outputs=torch.ones(batch, device=x.device), retain_graph=True)[0][:, i]
+                    for i in range(dim) )
     print("Computed laplacian_logp.")
     return y, grad_y, laplacian_y

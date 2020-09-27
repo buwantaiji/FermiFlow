@@ -40,7 +40,7 @@ class CNF(torch.nn.Module):
         self.f = F(v)
 
         self.t_span = t_span
-        self.t_span_inverse = t_span[1], t_span[0]
+        self.t_span_reverse = t_span[1], t_span[0]
 
         self.pair_potential = pair_potential
         self.sp_potential = sp_potential
@@ -52,8 +52,8 @@ class CNF(torch.nn.Module):
 
     def logp(self, x, params_require_grad=False):
         batch = x.shape[0]
-        z, delta_logp = solve_ivp_nnmodule(self.f, self.t_span_inverse, 
-                    (x, torch.zeros(batch)), params_require_grad=params_require_grad)
+        z, delta_logp = solve_ivp_nnmodule(self.f, self.t_span_reverse, 
+                (x, torch.zeros(batch, device=x.device)), params_require_grad=params_require_grad)
         logp = self.basedist.log_prob(z) - delta_logp
         return logp
 
@@ -61,8 +61,8 @@ class CNF(torch.nn.Module):
         z, x = self.sample((batch,))
         _, logp = solve_ivp_nnmodule(self.f, self.t_span, (z, self.basedist.log_prob(z)), 
                                         params_require_grad=False)
-        z_reverse, delta_logp = solve_ivp_nnmodule(self.f, self.t_span_inverse, 
-                        (x, torch.zeros(batch)), params_require_grad=False)
+        z_reverse, delta_logp = solve_ivp_nnmodule(self.f, self.t_span_reverse, 
+                        (x, torch.zeros(batch, device=x.device)), params_require_grad=False)
         logp_reverse = self.basedist.log_prob(z_reverse) - delta_logp
 
         print("MaxAbs of z_reverse - z:", (z_reverse - z).abs().max())
@@ -102,8 +102,9 @@ if __name__ == "__main__":
     from potentials import HO, GaussianPairPotential
 
     n, dim = 4, 2
+    device = torch.device("cuda:1")
 
-    freebosonho = FreeBosonHO(n, dim)
+    basedist = FreeBosonHO(n, dim, device=device)
 
     D_hidden = 100
     eta = MLP(1, D_hidden)
@@ -117,7 +118,8 @@ if __name__ == "__main__":
     g, s = 9.0, 0.5
     pair_potential = GaussianPairPotential(g, s)
 
-    cnf = CNF(freebosonho, v, t_span, pair_potential, sp_potential=sp_potential)
+    cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
+    cnf.to(device=device)
     
     batch = 8000
     #cnf.check_reversibility(batch)
