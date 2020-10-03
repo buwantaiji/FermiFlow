@@ -85,14 +85,15 @@ class CNF(torch.nn.Module):
         if self.sp_potential:
             potential += self.sp_potential.V(x)
 
-        Eloc = kinetic + potential
+        Eloc = (kinetic + potential).detach()
 
-        self.E = Eloc.detach().mean().item()
+        self.E, self.E_std = Eloc.mean().item(), Eloc.std().item()
         gradE = (logp_full * (Eloc.detach() - self.E)).mean()
         return gradE
 
 
 if __name__ == "__main__":
+    """ 2D Bosons
     from base_dist import FreeBosonHO
 
     from MLP import MLP
@@ -117,20 +118,93 @@ if __name__ == "__main__":
     sp_potential = HO()
     g, s = 5.0, 0.5
     pair_potential = GaussianPairPotential(g, s)
+    """
+    #""" 2D Fermions
+    from base_dist import FreeFermionHO2D
+
+    from MLP import MLP
+    from equivariant_funs import Backflow
+
+    from potentials import HO, CoulombPairPotential
+
+    nup, ndown = 6, 0
+    device = torch.device("cuda:1")
+
+    basedist = FreeFermionHO2D(nup, ndown, device=device)
+
+    D_hidden = 100
+    eta = MLP(1, D_hidden)
+    v = Backflow(eta)
+
+    t_span = (0., 1.)
+
+    sp_potential = HO()
+    Z = 0.5
+    pair_potential = CoulombPairPotential(Z)
+    #"""
 
     cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
     cnf.to(device=device)
-    
-    batch = 8000
     #cnf.check_reversibility(batch)
-
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
-    iter_num = 200
-    print("g =", g, "batch =", batch)
+
+    batch = 8000
+    iter_num = 500
+    print("batch =", batch)
     print("iter_num:", iter_num)
-    for i in range(iter_num):
+
+    ################################################################################
+    # Load the model and optimizer states from a checkpoint file, if any.
+    checkpoint = "datas/Fermion2DHO.chkp"
+    import os
+    if os.path.exists(checkpoint):
+        print("Load checkpoint file: %s" % checkpoint)
+        states = torch.load(checkpoint)
+        cnf.load_state_dict(states["nn_state_dict"])
+        optimizer.load_state_dict(states["optimizer_state_dict"])
+        base_iter = states["base_iter"]
+        Es = states["Es"]
+        Es_std = states["Es_std"]
+    else:
+        print("Start from scratch...")
+        base_iter = 0
+        Es = torch.empty(0, device=device)
+        Es_std = torch.empty(0, device=device)
+    new_Es = torch.empty(iter_num, device=device)
+    new_Es_std = torch.empty(iter_num, device=device)
+    """
+    print("Es:", Es)
+    print("Es.shape:", Es.shape)
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    Es_numpy = Es.to(device=torch.device("cpu")).numpy()
+    iters = np.arange(1, base_iter + 1)
+    plt.plot(iters, Es_numpy)
+    plt.plot(iters, 19.0 * np.ones(base_iter))
+    plt.ylim(-50, 100)
+    plt.show()
+    exit(0)
+    """
+    ################################################################################
+
+    for i in range(base_iter + 1, base_iter + iter_num + 1):
         gradE = cnf(batch)
         optimizer.zero_grad()
         gradE.backward()
         gradE = optimizer.step()
-        print("iter: %03d" % i, "Energy:", cnf.E)
+        print("iter: %03d" % i, "E:", cnf.E, "E_std:", cnf.E_std)
+        new_Es[i - base_iter - 1] = cnf.E
+        new_Es_std[i - base_iter - 1] = cnf.E_std
+
+        if(i == base_iter + iter_num):
+            nn_state_dict = cnf.state_dict()
+            optimizer_state_dict = optimizer.state_dict()
+            states = {"nn_state_dict": nn_state_dict, 
+                    "optimizer_state_dict": optimizer_state_dict, 
+                    "base_iter": base_iter + iter_num, 
+                    "Es": torch.cat((Es, new_Es)), 
+                    "Es_std": torch.cat((Es_std, new_Es_std)),
+                    }
+            torch.save(states, checkpoint)
+            print("States saved to the checkpoint file: %s" % checkpoint)

@@ -38,10 +38,12 @@ if __name__ == "__main__":
     batch, D_in, H, D_out = 64, 1000, 100, 10
 
     torch.manual_seed(42)
-    x = torch.randn(batch, D_in)
-    y = torch.randn(batch, D_out)
+    device = torch.device("cuda:0")
+    x = torch.randn(batch, D_in, device=device)
+    y = torch.randn(batch, D_out, device=device)
 
     model = TwoLayerNet(D_in, H, D_out)
+    model.to(device=device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     checkpoint = "test.chkp"

@@ -30,14 +30,29 @@ class PairPotential(object):
         row_indices, col_indices = torch.triu_indices(n, n, offset=1)
         return (x[:, :, None] - x[:, None])[:, row_indices, col_indices, :].norm(dim=-1)
 
+    def V(self, x):
+        """
+            Compute the total potential energy V from the pair-wise potential function v:
+            V = \sum_{i<j}^n v(|r_i - r_j|).
+        """
+        rij = self.rij(x)
+        return self.v(rij).sum(dim=-1)
+
 class GaussianPairPotential(PairPotential):
     def __init__(self, g, s):
         super(GaussianPairPotential, self).__init__()
         self.g, self.s = g, s
 
-    def V(self, x):
-        rij = self.rij(x)
-        return self.g / (np.pi * self.s**2) * torch.exp(- rij**2 / self.s**2).sum(dim=-1)
+    def v(self, rij):
+        return self.g / (np.pi * self.s**2) * torch.exp(- rij**2 / self.s**2)
+
+class CoulombPairPotential(PairPotential):
+    def __init__(self, Z):
+        super(CoulombPairPotential, self).__init__()
+        self.Z = Z
+
+    def v(self, rij):
+        return self.Z / rij
 
 if __name__ == "__main__":
     g, s = 3.0, 0.5
