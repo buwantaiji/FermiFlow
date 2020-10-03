@@ -76,36 +76,75 @@ def test_slogdet():
     assert torch.allclose(dmylogabsdet, dlogabsdet)
 
 def test_LogAbsSlaterDet():
-    """
+    """ IMPORTANT TEST
         Test the result of backward of the LogAbsSlaterDet primitive is consistent
-    with that by directly backwarding through the torch.slogdet function.
+    with the approach logabsslaterdet, which works by directly backwarding through 
+    the torch.slogdet function.
     """
-    from base_dist import FreeFermionHO2D, LogAbsSlaterDet
+    from base_dist import FreeFermionHO2D, LogAbsSlaterDet, logabsslaterdet
     log_abs_slaterdet = LogAbsSlaterDet.apply
+    from utils import y_grad_laplacian
 
     nup, ndown = 3, 6
     freefermionho2d = FreeFermionHO2D(nup, ndown)
-    batch = (20, 30)
-    x = torch.randn(*batch, nup, 2, requires_grad=True)
-    logabsdet_up = log_abs_slaterdet(freefermionho2d.orbitals_up, x)
-    assert logabsdet_up.shape == batch
-    grad_logabsdet_up, = torch.autograd.grad(logabsdet_up, x, 
-                                grad_outputs=torch.ones_like(logabsdet_up))
-    assert grad_logabsdet_up.shape == (*batch, nup, 2)
+    batch = 20
+    x = torch.randn(batch, nup, 2, requires_grad=True)
 
-    def direct(orbitals, x):
-        *batch, n, _ = x.shape
-        D = torch.empty(*batch, n, n)
-        for i in range(n):
-            D[..., i] = orbitals[i](x)
-        _, logabsdet = D.slogdet() 
-        return logabsdet
+    logabsdet, grad_logabsdet, laplacian_logabsdet= \
+        y_grad_laplacian(lambda x: log_abs_slaterdet(freefermionho2d.orbitals_up, x), x)
+    assert logabsdet.shape == (batch,)
+    assert grad_logabsdet.shape == (batch, nup, 2)
+    assert laplacian_logabsdet.shape == (batch,)
 
-    logabsdet_up_direct = direct(freefermionho2d.orbitals_up, x)
-    grad_logabsdet_up_direct, = torch.autograd.grad(logabsdet_up_direct, x, 
-                                grad_outputs=torch.ones_like(logabsdet_up_direct))
-    assert torch.allclose(logabsdet_up_direct, logabsdet_up)
-    assert torch.allclose(grad_logabsdet_up_direct, grad_logabsdet_up)
+    logabsdet_direct, grad_logabsdet_direct, laplacian_logabsdet_direct = \
+        y_grad_laplacian(lambda x: logabsslaterdet(freefermionho2d.orbitals_up, x), x)
+    assert torch.allclose(logabsdet_direct, logabsdet)
+    assert torch.allclose(grad_logabsdet_direct, grad_logabsdet)
+    assert torch.allclose(laplacian_logabsdet_direct, laplacian_logabsdet)
+
+def test_FreeFermionHO2D_slaterdet():
+    """ IMPORTANT TEST
+        Test the single-particle orbitals and Slater determinants constructed
+    in FreeFermionHO2D base distribution class are indeed eigenfunctions of the
+    corresponding Hamiltonians.
+    """
+    from base_dist import FreeFermionHO2D
+    from utils import y_grad_laplacian
+
+    nup, ndown = 3, 6
+    freefermionho2d = FreeFermionHO2D(nup, ndown)
+    batch, n = 20, nup + ndown
+
+    """ Test the single-particle orbitals. """
+    i = 0
+    x = torch.randn(batch, 2, requires_grad=True)
+    log, grad_log, laplacian_log = y_grad_laplacian(
+        lambda x: freefermionho2d.OrbitalsHO2D[i](x).log(), x)
+    kinetic = - 1/2 * laplacian_log - 1/2 * (grad_log**2).sum(dim=-1)
+    potential = 0.5 * (x**2).sum(dim=-1)
+    Eloc = kinetic + potential
+    assert torch.allclose(Eloc, freefermionho2d.Es[i] * torch.ones(batch))
+
+    """ Test a single Slater determinant. """
+    from base_dist import LogAbsSlaterDet
+    log_abs_slaterdet = LogAbsSlaterDet.apply
+
+    x = torch.randn(batch, nup, 2, requires_grad=True)
+    log, grad_log, laplacian_log = y_grad_laplacian(
+        lambda x: log_abs_slaterdet(freefermionho2d.OrbitalsHO2D[:nup], x), x)
+    kinetic = - 1/2 * laplacian_log - 1/2 * (grad_log**2).sum(dim=(-2, -1))
+    potential = 0.5 * (x**2).sum(dim=(-2, -1))
+    Eloc = kinetic + potential
+    assert torch.allclose(Eloc, sum(freefermionho2d.Es[:nup]) * torch.ones(batch))
+
+    """ Test a complete Fermion wavefunction composed of two Slater determinants. """
+    x = torch.randn(batch, n, 2, requires_grad=True)
+    logp, grad_logp, laplacian_logp = y_grad_laplacian(freefermionho2d.log_prob, x)
+    kinetic = - 1/4 * laplacian_logp - 1/8 * (grad_logp**2).sum(dim=(-2, -1))
+    potential = 0.5 * (x**2).sum(dim=(-2, -1))
+    Eloc = kinetic + potential
+    assert torch.allclose(Eloc, sum(freefermionho2d.Es[:nup]
+                                  + freefermionho2d.Es[:ndown]) * torch.ones(batch))
 
 def test_FreeFermionHO2D_sample():
     from base_dist import FreeFermionHO2D
