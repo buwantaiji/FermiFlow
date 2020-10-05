@@ -149,7 +149,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
 
     batch = 8000
-    iter_num = 500
+    iter_num = 1900
     print("batch =", batch)
     print("iter_num:", iter_num)
 
@@ -180,20 +180,30 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     Es_numpy = Es.to(device=torch.device("cpu")).numpy()
     iters = np.arange(1, base_iter + 1)
-    plt.plot(iters, Es_numpy)
-    plt.plot(iters, 19.0 * np.ones(base_iter))
-    plt.ylim(-50, 100)
+    plt.plot(iters, (Es_numpy - 18.3) / 18.3)
+    plt.plot(iters, 18.3 * np.ones(base_iter))
+    #plt.ylim(-10, 500)
+    #plt.ylim(-5, 5)
+    plt.xscale("log")
+    plt.yscale("log")
     plt.show()
     exit(0)
     """
     ################################################################################
 
+    import time
     for i in range(base_iter + 1, base_iter + iter_num + 1):
+        start = time.time()
+
         gradE = cnf(batch)
         optimizer.zero_grad()
         gradE.backward()
         gradE = optimizer.step()
-        print("iter: %03d" % i, "E:", cnf.E, "E_std:", cnf.E_std)
+
+        speed = (time.time() - start) * 100 / 3600
+        print("iter: %03d" % i, "E:", cnf.E, "E_std:", cnf.E_std, 
+                "Instant speed (hours per 100 iters):", speed)
+
         new_Es[i - base_iter - 1] = cnf.E
         new_Es_std[i - base_iter - 1] = cnf.E_std
 
