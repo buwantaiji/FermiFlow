@@ -70,6 +70,21 @@ class CNF(torch.nn.Module):
         print("logp_reverse - logp:", logp_reverse - logp)
         print("MaxAbs of logp_inverse - logp:", (logp_reverse - logp).abs().max())
 
+    def plot_eta(self, r_max=20.0, zero_line=True):
+        from equivariant_funs import Backflow
+        if not isinstance(self.v_wrapper.v, Backflow):
+            raise TypeError("The scalar-valued function eta is only meaningful for "
+                    "the Backflow transformation.")
+        eta = self.v_wrapper.v.eta
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        r = np.linspace(0., r_max, num=int(r_max * 100))
+        eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
+        plt.plot(r, eta_r)
+        if zero_line: plt.plot(r, np.zeros_like(r))
+        plt.show()
+
     def forward(self, batch):
         from utils import y_grad_laplacian
 
@@ -95,11 +110,8 @@ class CNF(torch.nn.Module):
 if __name__ == "__main__":
     """ 2D Bosons
     from base_dist import FreeBosonHO
-
     from MLP import MLP
     from equivariant_funs import Backflow
-    #from equivariant_funs import FermiNet
-
     from potentials import HO, GaussianPairPotential
 
     n, dim = 4, 2
@@ -116,15 +128,18 @@ if __name__ == "__main__":
     t_span = (0., 1.)
 
     sp_potential = HO()
-    g, s = 5.0, 0.5
+    import sys
+    g, s = float(sys.argv[1]), 0.5
+    print("g = %.1f" % g)
     pair_potential = GaussianPairPotential(g, s)
+
+    checkpoint = "datas/BosonHO2D/g_%.1f.chkp" % g
     """
+
     #""" 2D Fermions
     from base_dist import FreeFermionHO2D
-
     from MLP import MLP
     from equivariant_funs import Backflow
-
     from potentials import HO, CoulombPairPotential
 
     nup, ndown = 6, 0
@@ -141,21 +156,22 @@ if __name__ == "__main__":
     sp_potential = HO()
     Z = 0.5
     pair_potential = CoulombPairPotential(Z)
+
+    checkpoint = "datas/FermionHO2D.chkp"
     #"""
 
     cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
     cnf.to(device=device)
-    #cnf.check_reversibility(batch)
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
 
     batch = 8000
-    iter_num = 1900
+    iter_num = 1000
     print("batch =", batch)
     print("iter_num:", iter_num)
 
-    ################################################################################
+
+    # ==============================================================================
     # Load the model and optimizer states from a checkpoint file, if any.
-    checkpoint = "datas/Fermion2DHO.chkp"
     import os
     if os.path.exists(checkpoint):
         print("Load checkpoint file: %s" % checkpoint)
@@ -172,7 +188,6 @@ if __name__ == "__main__":
         Es_std = torch.empty(0, device=device)
     new_Es = torch.empty(iter_num, device=device)
     new_Es_std = torch.empty(iter_num, device=device)
-    """
     print("Es:", Es)
     print("Es.shape:", Es.shape)
 
@@ -180,16 +195,24 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     Es_numpy = Es.to(device=torch.device("cpu")).numpy()
     iters = np.arange(1, base_iter + 1)
-    plt.plot(iters, (Es_numpy - 18.3) / 18.3)
-    plt.plot(iters, 18.3 * np.ones(base_iter))
+    #E_exact = 18.3
+    plt.plot(iters, Es_numpy)
+    #plt.plot(iters, E_exact * np.ones(base_iter))
     #plt.ylim(-10, 500)
     #plt.ylim(-5, 5)
     plt.xscale("log")
     plt.yscale("log")
+    plt.xlabel("Iters")
+    plt.ylabel("E")
+    plt.savefig("datas/FermionHO2D.pdf")
     plt.show()
     exit(0)
     """
-    ################################################################################
+    """
+
+    #cnf.plot_eta()
+    #exit(0)
+    # ==============================================================================
 
     import time
     for i in range(base_iter + 1, base_iter + iter_num + 1):
@@ -203,6 +226,8 @@ if __name__ == "__main__":
         speed = (time.time() - start) * 100 / 3600
         print("iter: %03d" % i, "E:", cnf.E, "E_std:", cnf.E_std, 
                 "Instant speed (hours per 100 iters):", speed)
+
+        #cnf.plot_eta()
 
         new_Es[i - base_iter - 1] = cnf.E
         new_Es_std[i - base_iter - 1] = cnf.E_std
