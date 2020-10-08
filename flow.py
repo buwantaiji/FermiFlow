@@ -83,6 +83,8 @@ class CNF(torch.nn.Module):
         eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
         plt.plot(r, eta_r)
         if zero_line: plt.plot(r, np.zeros_like(r))
+        plt.xlabel("$r$")
+        plt.ylabel("$\\eta(r)$")
         plt.show()
 
     def forward(self, batch):
