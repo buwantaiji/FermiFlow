@@ -8,9 +8,11 @@ def test_Backflow():
     import time
 
     print("\n---- Backflow test ----")
-    D_hidden = 100
-    eta = MLP(1, D_hidden)
-    v = Backflow(eta)
+    D_hidden_eta = 100
+    eta = MLP(1, D_hidden_eta)
+    D_hidden_mu = 200
+    mu = MLP(1, D_hidden_mu)
+    v = Backflow(eta, mu=mu)
 
     batch, n, dim = 1000, 10, 3
     x = torch.randn(batch, n, dim, requires_grad=True)
@@ -31,6 +33,28 @@ def test_Backflow():
 
     assert div_direct.shape == (batch,)
     assert torch.allclose(div, div_direct)
+
+def test_Backflow_offset():
+    """ Test that the two-body backflow transformation yields correct result. """
+    from MLP import MLP
+    from equivariant_funs import Backflow
+
+    D_hidden = 100
+    eta = MLP(1, D_hidden)
+    v = Backflow(eta)
+
+    batch, n, dim = 1000, 10, 3
+    x = torch.randn(batch, n, dim)
+
+    output = v._e_e(x)
+    def e_e_naive(v, x):
+        n = x.shape[-2]
+        rij = x[:, :, None] - x[:, None]
+        dij = rij.norm(dim=-1, keepdim=True)
+        return (v.eta(dij) * rij).sum(dim=-2)
+    output_naive = e_e_naive(v, x)
+
+    assert torch.allclose(output, output_naive)
 
 def test_FermiNet():
     from equivariant_funs import FermiNet

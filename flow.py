@@ -110,7 +110,7 @@ class CNF(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    """ 2D Bosons
+    #""" 2D Bosons
     from base_dist import FreeBosonHO
     from MLP import MLP
     from equivariant_funs import Backflow
@@ -123,7 +123,8 @@ if __name__ == "__main__":
 
     D_hidden = 100
     eta = MLP(1, D_hidden)
-    v = Backflow(eta)
+    mu = MLP(1, D_hidden)
+    v = Backflow(eta, mu=mu)
     #L, spsize, tpsize = 2, 16, 8
     #v = FermiNet(n, dim, L, spsize, tpsize)
 
@@ -136,9 +137,9 @@ if __name__ == "__main__":
     pair_potential = GaussianPairPotential(g, s)
 
     checkpoint = "datas/BosonHO2D/g_%.1f.chkp" % g
-    """
+    #"""
 
-    #""" 2D Fermions
+    """ 2D Fermions
     from base_dist import FreeFermionHO2D
     from MLP import MLP
     from equivariant_funs import Backflow
@@ -151,7 +152,8 @@ if __name__ == "__main__":
 
     D_hidden = 100
     eta = MLP(1, D_hidden)
-    v = Backflow(eta)
+    mu = MLP(1, D_hidden)
+    v = Backflow(eta, mu=mu)
 
     t_span = (0., 1.)
 
@@ -160,7 +162,7 @@ if __name__ == "__main__":
     pair_potential = CoulombPairPotential(Z)
 
     checkpoint = "datas/FermionHO2D.chkp"
-    #"""
+    """
 
     cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
     cnf.to(device=device)
@@ -190,6 +192,7 @@ if __name__ == "__main__":
         Es_std = torch.empty(0, device=device)
     new_Es = torch.empty(iter_num, device=device)
     new_Es_std = torch.empty(iter_num, device=device)
+    """
     print("Es:", Es)
     print("Es.shape:", Es.shape)
 
@@ -209,7 +212,6 @@ if __name__ == "__main__":
     plt.savefig("datas/FermionHO2D.pdf")
     plt.show()
     exit(0)
-    """
     """
 
     #cnf.plot_eta()
