@@ -70,21 +70,28 @@ class CNF(torch.nn.Module):
         print("logp_reverse - logp:", logp_reverse - logp)
         print("MaxAbs of logp_inverse - logp:", (logp_reverse - logp).abs().max())
 
-    def plot_eta(self, r_max=20.0, zero_line=True):
+    def plot_eta(self, device, r_max=20.0, zero_line=True):
         from equivariant_funs import Backflow
         if not isinstance(self.v_wrapper.v, Backflow):
             raise TypeError("The scalar-valued function eta is only meaningful for "
                     "the Backflow transformation.")
         eta = self.v_wrapper.v.eta
+        mu = self.v_wrapper.v.mu
 
         import numpy as np
         import matplotlib.pyplot as plt
         r = np.linspace(0., r_max, num=int(r_max * 100))
         eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-        plt.plot(r, eta_r)
+        plt.plot(r, eta_r, label="$\eta(r)$")
+        if mu is not None:
+            mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
+            plt.plot(r, mu_r, label="$\mu(r)$")
         if zero_line: plt.plot(r, np.zeros_like(r))
         plt.xlabel("$r$")
-        plt.ylabel("$\\eta(r)$")
+        plt.ylabel("Backflow potential")
+        plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
+                  ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
+        plt.legend()
         plt.show()
 
     def forward(self, batch):
@@ -110,36 +117,9 @@ class CNF(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    #""" 2D Bosons
-    from base_dist import FreeBosonHO
-    from MLP import MLP
-    from equivariant_funs import Backflow
-    from potentials import HO, GaussianPairPotential
-
-    n, dim = 4, 2
-    device = torch.device("cuda:1")
-
-    basedist = FreeBosonHO(n, dim, device=device)
-
-    D_hidden = 100
-    eta = MLP(1, D_hidden)
-    mu = MLP(1, D_hidden)
-    v = Backflow(eta, mu=mu)
     #L, spsize, tpsize = 2, 16, 8
     #v = FermiNet(n, dim, L, spsize, tpsize)
 
-    t_span = (0., 1.)
-
-    sp_potential = HO()
-    import sys
-    g, s = float(sys.argv[1]), 0.5
-    print("g = %.1f" % g)
-    pair_potential = GaussianPairPotential(g, s)
-
-    checkpoint = "datas/BosonHO2D/g_%.1f.chkp" % g
-    #"""
-
-    """ 2D Fermions
     from base_dist import FreeFermionHO2D
     from MLP import MLP
     from equivariant_funs import Backflow
@@ -161,18 +141,28 @@ if __name__ == "__main__":
     Z = 0.5
     pair_potential = CoulombPairPotential(Z)
 
-    checkpoint = "datas/FermionHO2D.chkp"
-    """
 
     cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
     cnf.to(device=device)
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
 
     batch = 8000
-    iter_num = 1000
+    iter_num = 900
     print("batch =", batch)
     print("iter_num:", iter_num)
 
+    checkpoint = "datas/BosonHO2D/" + \
+            "n_%d_" % n + \
+            "dim_%d_" % dim + \
+           ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
+            "Deta_%d_" % D_hidden_eta + \
+            "Dmu_%s_" % (D_hidden_mu if mu is not None else None) + \
+            "T0_%.1f_T1_%.1f_" % t_span + \
+            "batch_%d_" % batch + \
+            "g_%.1f_s_%.1f/" % (g, s) + \
+            "iters_%04d.chkp" % 0
+    print(checkpoint)
+    exit(0)
 
     # ==============================================================================
     # Load the model and optimizer states from a checkpoint file, if any.
@@ -192,30 +182,9 @@ if __name__ == "__main__":
         Es_std = torch.empty(0, device=device)
     new_Es = torch.empty(iter_num, device=device)
     new_Es_std = torch.empty(iter_num, device=device)
-    """
-    print("Es:", Es)
-    print("Es.shape:", Es.shape)
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    Es_numpy = Es.to(device=torch.device("cpu")).numpy()
-    iters = np.arange(1, base_iter + 1)
-    #E_exact = 18.3
-    plt.plot(iters, Es_numpy)
-    #plt.plot(iters, E_exact * np.ones(base_iter))
-    #plt.ylim(-10, 500)
-    #plt.ylim(-5, 5)
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.xlabel("Iters")
-    plt.ylabel("E")
-    plt.savefig("datas/FermionHO2D.pdf")
-    plt.show()
+    cnf.plot_eta()
     exit(0)
-    """
-
-    #cnf.plot_eta()
-    #exit(0)
     # ==============================================================================
 
     import time
@@ -225,7 +194,7 @@ if __name__ == "__main__":
         gradE = cnf(batch)
         optimizer.zero_grad()
         gradE.backward()
-        gradE = optimizer.step()
+        optimizer.step()
 
         speed = (time.time() - start) * 100 / 3600
         print("iter: %03d" % i, "E:", cnf.E, "E_std:", cnf.E_std, 

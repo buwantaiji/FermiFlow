@@ -87,7 +87,7 @@ class Backflow(torch.nn.Module):
             xi_i = xi^{e-e}_i + xi^{e-n}_i.
 
             It is easy to see that both components serve as equivariant functions 
-        respect to any permutation of particle positions, the so do their sum.
+        respect to any permutation of particle positions, then so do their sum.
         """
         return self._e_e(x) + \
               (self._e_n(x) if self.mu is not None else 0)
