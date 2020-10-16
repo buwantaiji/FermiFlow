@@ -35,6 +35,7 @@ def plot_backflow_potential(eta, mu, device, r_max=20.0, zero_line=True):
     plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
               ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
     plt.legend()
+    #plt.savefig(checkpoint_dir + "backflow.pdf")
     plt.show()
 
 if __name__ == "__main__":
@@ -96,7 +97,7 @@ if __name__ == "__main__":
         Es = torch.empty(0, device=device)
         Es_std = torch.empty(0, device=device)
 
-    plot_iterations(Es, Es_std)
+    #plot_iterations(Es, Es_std)
     
     eta, mu = cnf.backflow_potential()
     plot_backflow_potential(eta, mu, device)
