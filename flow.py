@@ -70,29 +70,13 @@ class CNF(torch.nn.Module):
         print("logp_reverse - logp:", logp_reverse - logp)
         print("MaxAbs of logp_inverse - logp:", (logp_reverse - logp).abs().max())
 
-    def plot_eta(self, device, r_max=20.0, zero_line=True):
+    def backflow_potential(self):
         from equivariant_funs import Backflow
         if not isinstance(self.v_wrapper.v, Backflow):
-            raise TypeError("The scalar-valued function eta is only meaningful for "
-                    "the Backflow transformation.")
+            raise TypeError("The underlying equivariant transformation is not Backflow.")
         eta = self.v_wrapper.v.eta
         mu = self.v_wrapper.v.mu
-
-        import numpy as np
-        import matplotlib.pyplot as plt
-        r = np.linspace(0., r_max, num=int(r_max * 100))
-        eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-        plt.plot(r, eta_r, label="$\eta(r)$")
-        if mu is not None:
-            mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-            plt.plot(r, mu_r, label="$\mu(r)$")
-        if zero_line: plt.plot(r, np.zeros_like(r))
-        plt.xlabel("$r$")
-        plt.ylabel("Backflow potential")
-        plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
-                  ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
-        plt.legend()
-        plt.show()
+        return eta, mu
 
     def forward(self, batch):
         from utils import y_grad_laplacian

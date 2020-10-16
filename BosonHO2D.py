@@ -20,6 +20,23 @@ def plot_iterations(Es, Es_std):
     plt.ylabel("E")
     plt.show()
 
+def plot_backflow_potential(eta, mu, device, r_max=20.0, zero_line=True):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    r = np.linspace(0., r_max, num=int(r_max * 100))
+    eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
+    plt.plot(r, eta_r, label="$\eta(r)$")
+    if mu is not None:
+        mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
+        plt.plot(r, mu_r, label="$\mu(r)$")
+    if zero_line: plt.plot(r, np.zeros_like(r))
+    plt.xlabel("$r$")
+    plt.ylabel("Backflow potential")
+    plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
+              ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
+    plt.legend()
+    plt.show()
+
 if __name__ == "__main__":
     from base_dist import FreeBosonHO
     from MLP import MLP
@@ -50,7 +67,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
 
     batch = 8000
-    base_iter = 0
+    base_iter = 1000
 
     checkpoint_dir = "datas/BosonHO2D/" + \
             "n_%d_" % n + \
@@ -79,11 +96,11 @@ if __name__ == "__main__":
         Es = torch.empty(0, device=device)
         Es_std = torch.empty(0, device=device)
 
-    #plot_iterations(Es, Es_std)
-    #exit(0)
+    plot_iterations(Es, Es_std)
     
-    #cnf.plot_eta(device)
-    #exit(0)
+    eta, mu = cnf.backflow_potential()
+    plot_backflow_potential(eta, mu, device)
+    exit(0)
     # ==============================================================================
 
     print("batch =", batch)
