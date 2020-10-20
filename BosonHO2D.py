@@ -8,6 +8,7 @@ def plot_iterations(Es, Es_std):
     import matplotlib.pyplot as plt
 
     print("Es:", Es)
+    #print("Es_std:", Es_std)
     iters, = Es.shape
     print("Number of iterations:", iters)
 
@@ -17,10 +18,10 @@ def plot_iterations(Es, Es_std):
     plt.xscale("log")
     plt.yscale("log")
     plt.xlabel("Iters")
-    plt.ylabel("E")
+    plt.ylabel("$E$")
     plt.show()
 
-def plot_backflow_potential(eta, mu, device, r_max=20.0, zero_line=True):
+def plot_backflow_potential(eta, mu, device, r_max=20.0):
     import numpy as np
     import matplotlib.pyplot as plt
     r = np.linspace(0., r_max, num=int(r_max * 100))
@@ -29,11 +30,11 @@ def plot_backflow_potential(eta, mu, device, r_max=20.0, zero_line=True):
     if mu is not None:
         mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
         plt.plot(r, mu_r, label="$\mu(r)$")
-    if zero_line: plt.plot(r, np.zeros_like(r))
     plt.xlabel("$r$")
     plt.ylabel("Backflow potential")
     plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
               ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
+    plt.grid(True)
     plt.legend()
     #plt.savefig(checkpoint_dir + "backflow.pdf")
     plt.show()
@@ -51,7 +52,9 @@ if __name__ == "__main__":
 
     D_hidden_eta = D_hidden_mu = 50
     eta = MLP(1, D_hidden_eta)
+    eta.init_zeros()
     mu = MLP(1, D_hidden_mu)
+    mu.init_zeros()
     #mu = None
     v = Backflow(eta, mu=mu)
 
@@ -70,7 +73,7 @@ if __name__ == "__main__":
     batch = 8000
     base_iter = 1000
 
-    checkpoint_dir = "datas/BosonHO2D/" + \
+    checkpoint_dir = "datas/BosonHO2D/init_zeros/" + \
             "n_%d_" % n + \
             "dim_%d_" % dim + \
            ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
@@ -129,15 +132,13 @@ if __name__ == "__main__":
         Es[i - 1] = cnf.E
         Es_std[i - 1] = cnf.E_std
 
-        #if(i == base_iter + iter_num):
-        if(True):
-            nn_state_dict = cnf.state_dict()
-            optimizer_state_dict = optimizer.state_dict()
-            states = {"nn_state_dict": nn_state_dict, 
-                    "optimizer_state_dict": optimizer_state_dict, 
-                    "Es": Es[:i], 
-                    "Es_std": Es_std[:i],
-                    }
-            checkpoint = checkpoint_dir + "iters_%04d.chkp" % i 
-            torch.save(states, checkpoint)
-            #print("States saved to the checkpoint file: %s" % checkpoint)
+        nn_state_dict = cnf.state_dict()
+        optimizer_state_dict = optimizer.state_dict()
+        states = {"nn_state_dict": nn_state_dict, 
+                "optimizer_state_dict": optimizer_state_dict, 
+                "Es": Es[:i], 
+                "Es_std": Es_std[:i],
+                }
+        checkpoint = checkpoint_dir + "iters_%04d.chkp" % i 
+        torch.save(states, checkpoint)
+        #print("States saved to the checkpoint file: %s" % checkpoint)

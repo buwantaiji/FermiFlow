@@ -15,6 +15,18 @@ class MLP(torch.nn.Module):
         self.fc2 = torch.nn.Linear(D_hidden, 1, bias=False)
         self.activation = torch.nn.Sigmoid()
 
+    def init_zeros(self):
+        torch.nn.init.zeros_(self.fc1.weight)
+        torch.nn.init.zeros_(self.fc1.bias)
+        torch.nn.init.zeros_(self.fc2.weight)
+
+    def init_gaussian(self, seed):
+        torch.manual_seed(seed)
+        std = 1e-3
+        torch.nn.init.normal_(self.fc1.weight, std=std)
+        torch.nn.init.normal_(self.fc1.bias, std=std)
+        torch.nn.init.normal_(self.fc2.weight, std=std)
+
     def forward(self, x):
         output = self.fc2(self.activation(self.fc1(x)))
         return output

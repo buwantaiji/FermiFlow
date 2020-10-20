@@ -3,6 +3,18 @@ torch.set_default_dtype(torch.float64)
 
 from MLP import MLP
 
+def test_reproducibility():
+    """ Test the initial parameters are the same by setting the same seed. """
+    dim, D_hidden = 15, 40
+    seed = 42
+    mlp1 = MLP(dim, D_hidden)
+    mlp1.init_gaussian(seed)
+    mlp2 = MLP(dim, D_hidden)
+    mlp2.init_gaussian(seed)
+    assert torch.allclose(mlp1.fc1.weight, mlp2.fc1.weight)
+    assert torch.allclose(mlp1.fc1.bias, mlp2.fc1.bias)
+    assert torch.allclose(mlp1.fc2.weight, mlp2.fc2.weight)
+
 def test_batchdim_1():
     """ batch dimension is 1. """
     dim, D_hidden = 15, 40
