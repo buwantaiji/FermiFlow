@@ -113,66 +113,48 @@ def logabsslaterdet(orbitals, x):
     _, logabsdet = D.slogdet() 
     return logabsdet
 
-class FreeFermionHO2D(BaseDist):
+class FreeFermion(BaseDist):
     """ 
-        Ground state of n free 2D Fermions trapped in an isotropical harmonic potential.
-    The single-particle hamiltonian reads: h(r) = - 1/2 laplacian + 1/2 r^2, 
-    where r = (x_1, x_2) is the coordinate vector in R^2.
+        This class serves to compute the log probability and sample the eigenstates
+    of an non-interacting Fermion system, i.e., Slater determinants.
 
-        Users should specify nup, ndown, the number of spin up and spin down electrons, 
-    respectively. Then the ground state wavefunction (after eliminating the spin indices)
-    is given by the product of spin-up and spin-down Slater determinants:
-        \Psi_0(r^up_1, ..., r^up_nup, r^down_1, r^down_ndown)
+        For a non-interacting systems with nup spin-up electrons and ndown spin-down
+    electrons, any eigenstate wavefunction (after eliminating the spin indices) 
+    is written as the product of spin-up and spin-down Slater determinants:
+        \Psi(r^up_1, ..., r^up_nup, r^down_1, r^down_ndown)
          = det(\phi^up_j(r^up_i)) * det(\phi^down_j(r^down_i)),
-    where \phi^up_j (j = 1, ..., nup), \phi^down_j (j = 1, ..., ndown) are the
+    where \phi^up_j (j = 1, ..., nup), \phi^down_j (j = 1, ..., ndown) are the occupied
     single-particle orbitals for the spin-up and spin-down electrons, respectively.
+    These orbitals are passed as arguments "orbitals_up" and "orbitals_down" in the
+    class methods.
 
-    The expression above is not normalized. The normalization factor is 1 / sqrt(nup! * ndown!).
+        Note the wavefunction above is not normalized. The normalization factor is 
+    1 / sqrt(nup! * ndown!).
     """
 
-    def __init__(self, nup, ndown, device=torch.device("cpu")):
-        import numpy as np
-
-        super(FreeFermionHO2D, self).__init__()
-        pi1_over_4_inverse = 1. / np.pi ** (1/4)
-        OrbitalsHO1D = [
-            lambda x: pi1_over_4_inverse, 
-            lambda x: pi1_over_4_inverse * np.sqrt(2) * x, 
-            lambda x: pi1_over_4_inverse / np.sqrt(2) * (2*x**2 - 1), 
-            lambda x: pi1_over_4_inverse / np.sqrt(3) * (2*x**3 - 3*x)]
-        HO2D = lambda x, nx, ny: torch.exp(- 0.5 * (x**2).sum(dim=-1)) \
-                                * OrbitalsHO1D[nx](x[..., 0]) \
-                                * OrbitalsHO1D[ny](x[..., 1])
-        self.OrbitalsHO2D = [
-            lambda x: HO2D(x, 0, 0), # E=1
-            lambda x: HO2D(x, 0, 1), # E=2
-            lambda x: HO2D(x, 1, 0),
-            lambda x: HO2D(x, 0, 2), # E=3 
-            lambda x: HO2D(x, 1, 1),
-            lambda x: HO2D(x, 2, 0),
-            ]
-        self.Es = [1, 
-                   2, 2, 
-                   3, 3, 3,]
-
-        self.nup, self.ndown = nup, ndown
-        self.orbitals_up, self.orbitals_down = self.OrbitalsHO2D[:nup], self.OrbitalsHO2D[:ndown]
+    def __init__(self, device=torch.device("cpu")):
+        super(FreeFermion, self).__init__()
         self.device = device
 
-    def log_prob(self, x):
-        logabspsi = (LogAbsSlaterDet.apply(self.orbitals_up, x[..., :self.nup, :]) 
-                        if self.nup != 0 else 0) \
-                  + (LogAbsSlaterDet.apply(self.orbitals_down, x[..., self.nup:, :])
-                        if self.ndown != 0 else 0)
+    def log_prob(self, orbitals_up, orbitals_down, x):
+        nup, ndown = len(orbitals_up), len(orbitals_down)
+        if (nup + ndown != x.shape[-2]):
+            raise ValueError("The total number of orbitals is inconsistent with "
+                "the number of particles.")
+        logabspsi = (LogAbsSlaterDet.apply(orbitals_up, x[..., :nup, :]) 
+                        if nup != 0 else 0) \
+                  + (LogAbsSlaterDet.apply(orbitals_down, x[..., nup:, :])
+                        if ndown != 0 else 0)
         logp = 2 * logabspsi
         return logp
 
-    def sample(self, sample_shape, equilibrim_steps=100, tau=0.1):
-        x = torch.randn(*sample_shape, self.nup + self.ndown, 2, device=self.device)
-        logp = self.log_prob(x)
+    def sample(self, orbitals_up, orbitals_down, sample_shape, equilibrim_steps=100, tau=0.1):
+        nup, ndown = len(orbitals_up), len(orbitals_down)
+        x = torch.randn(*sample_shape, nup + ndown, 2, device=self.device)
+        logp = self.log_prob(orbitals_up, orbitals_down, x)
         for _ in range(equilibrim_steps):
             new_x = x + tau * torch.randn_like(x)
-            new_logp = self.log_prob(new_x)
+            new_logp = self.log_prob(orbitals_up, orbitals_down, new_x)
             p_accept = torch.exp(new_logp - logp)
             accept = torch.rand_like(p_accept) < p_accept
             x[accept] = new_x[accept]
