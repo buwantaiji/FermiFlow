@@ -97,3 +97,38 @@ def test_independent():
     logp2 = dist_equivalent.log_prob(x)
     assert logp1.shape == sample_shape + dist_independent.batch_shape
     assert torch.allclose(logp1, logp2)
+
+# ==================================================================================
+def test_categorical():
+    """
+        Test on the Categorical distribution class, in particular, how the gradients
+    of the (log) weight parameters can be obtained in a usual way.
+    """
+    from torch.distributions.categorical import Categorical
+
+    def log_prob(log_weights, x):
+        log_weights = log_weights - log_weights.max()
+        logp = log_weights - log_weights.exp().sum().log()
+        return logp[x]
+
+    N = 10
+    log_weights = torch.randn(N, requires_grad=True)
+    dist = Categorical(logits=log_weights)
+
+    logp = dist.log_prob(torch.arange(N))
+    logp_analytical = log_prob(log_weights, torch.arange(N))
+    #print("logp:", logp, "\nlogp_analytical:", logp_analytical)
+    assert torch.allclose(logp, logp_analytical)
+    assert torch.allclose(logp.exp().sum(), torch.tensor(1.0))
+
+    sample_shape = (100,)
+    x = dist.sample(sample_shape)
+    loss = dist.log_prob(x)
+    loss_analytical = log_prob(log_weights, x)
+    assert torch.allclose(loss, loss_analytical)
+
+    y = torch.randn(sample_shape)
+    grad, = torch.autograd.grad(loss, log_weights, grad_outputs=y, retain_graph=True)
+    grad_analytical, = torch.autograd.grad(loss_analytical, log_weights, grad_outputs=y)
+    #print("grad:", grad, "\ngrad_analytical:", grad_analytical)
+    assert torch.allclose(grad, grad_analytical)
