@@ -1,8 +1,6 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
-from flow import CNF
-
 def plot_iterations(Es, Es_std):
     import numpy as np
     import matplotlib.pyplot as plt
@@ -41,15 +39,21 @@ def plot_backflow_potential(eta, mu, device, r_max=20.0):
     plt.show()
 
 if __name__ == "__main__":
-    from base_dist import FreeFermionHO2D
+    from orbitals import HO2D
+    from base_dist import FreeFermion
+
     from MLP import MLP
     from equivariant_funs import Backflow
+    from flow import CNF
+
     from potentials import HO, CoulombPairPotential
+    from VMC import GSVMC
 
     nup, ndown = 6, 0
     device = torch.device("cuda:1")
 
-    basedist = FreeFermionHO2D(nup, ndown, device=device)
+    orbitals = HO2D()
+    basedist = FreeFermion(device=device)
 
     D_hidden_eta = D_hidden_mu = 50
     eta = MLP(1, D_hidden_eta)
@@ -61,13 +65,16 @@ if __name__ == "__main__":
 
     t_span = (0., 1.)
 
+    cnf = CNF(v, t_span)
+
     sp_potential = HO()
     Z = 0.5
     pair_potential = CoulombPairPotential(Z)
 
-    cnf = CNF(basedist, v, t_span, pair_potential, sp_potential=sp_potential)
-    cnf.to(device=device)
-    optimizer = torch.optim.Adam(cnf.parameters(), lr=1e-2)
+    model = GSVMC(nup, ndown, orbitals, basedist, cnf, 
+                    pair_potential, sp_potential=sp_potential)
+    model.to(device=device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
     batch = 8000
     base_iter = 0
@@ -89,7 +96,7 @@ if __name__ == "__main__":
     if os.path.exists(checkpoint):
         print("Load checkpoint file: %s" % checkpoint)
         states = torch.load(checkpoint)
-        cnf.load_state_dict(states["nn_state_dict"])
+        model.load_state_dict(states["nn_state_dict"])
         optimizer.load_state_dict(states["optimizer_state_dict"])
         Es = states["Es"]
         Es_std = states["Es_std"]
@@ -100,7 +107,7 @@ if __name__ == "__main__":
 
     #plot_iterations(Es, Es_std)
     
-    #eta, mu = cnf.backflow_potential()
+    #eta, mu = model.cnf.backflow_potential()
     #plot_backflow_potential(eta, mu, device)
     #exit(0)
     # ==============================================================================
@@ -118,19 +125,20 @@ if __name__ == "__main__":
     for i in range(base_iter + 1, base_iter + iter_num + 1):
         start = time.time()
 
-        gradE = cnf(batch)
+        gradE = model(batch)
         optimizer.zero_grad()
         gradE.backward()
         optimizer.step()
 
         speed = (time.time() - start) * 100 / 3600
-        print("iter: %03d" % i, "E:", cnf.E, "E_std:", cnf.E_std, 
+        print("iter: %03d" % i, "E:", model.E, "E_std:", model.E_std, 
                 "Instant speed (hours per 100 iters):", speed)
 
-        Es[i - 1] = cnf.E
-        Es_std[i - 1] = cnf.E_std
+        Es[i - 1] = model.E
+        Es_std[i - 1] = model.E_std
 
-        nn_state_dict = cnf.state_dict()
+        """
+        nn_state_dict = model.state_dict()
         optimizer_state_dict = optimizer.state_dict()
         states = {"nn_state_dict": nn_state_dict, 
                 "optimizer_state_dict": optimizer_state_dict, 
@@ -140,3 +148,4 @@ if __name__ == "__main__":
         checkpoint = checkpoint_dir + "iters_%04d.chkp" % i 
         torch.save(states, checkpoint)
         #print("States saved to the checkpoint file: %s" % checkpoint)
+        """
