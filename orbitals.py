@@ -84,8 +84,8 @@ class HO2D(Orbitals):
                                 itertools.combinations(self.Es, nup))
             if sum(E) <= sum(self.Es[:nup]) + 2]
         states = sorted(states, key=lambda state_E: sum(state_E[1]))
-        #states = tuple((state, ()) for state, _ in states)
-        states = tuple(sum(E) for _, E in states)
+        states = tuple((state, ()) for state, _ in states)
+        #states = tuple(sum(E) for _, E in states)
         return states
 
 if __name__ == "__main__":

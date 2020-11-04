@@ -149,6 +149,7 @@ class FreeFermion(BaseDist):
         return logp
 
     def sample(self, orbitals_up, orbitals_down, sample_shape, equilibrim_steps=100, tau=0.1):
+        #print("Sample a Slater determinant...")
         nup, ndown = len(orbitals_up), len(orbitals_down)
         x = torch.randn(*sample_shape, nup + ndown, 2, device=self.device)
         logp = self.log_prob(orbitals_up, orbitals_down, x)
