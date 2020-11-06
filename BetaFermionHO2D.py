@@ -23,7 +23,7 @@ def plot_iterations(Fs, Fs_std, Es, Es_std):
     plt.xlabel("Iters")
     plt.ylabel("Observable")
     plt.legend()
-    #plt.savefig(checkpoint_dir + "Observable.pdf")
+    #plt.savefig(checkpoint_dir + "observable.pdf")
     plt.show()
 
 def plot_backflow_potential(eta, mu, device, r_max=20.0):
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     from potentials import HO, CoulombPairPotential
     from VMC import BetaVMC
 
-    beta = 4.0
+    beta = 6.0
     nup, ndown = 6, 0
     device = torch.device("cuda:1")
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
     batch = 8000
-    base_iter = 0
+    base_iter = 1000
 
     checkpoint_dir = "datas/BetaFermionHO2D/init_zeros/" + \
             "beta_%.1f_" % beta + \
@@ -130,11 +130,11 @@ if __name__ == "__main__":
         Es = torch.empty(0, device=device)
         Es_std = torch.empty(0, device=device)
 
-    #plot_iterations(Fs, Fs_std, Es, Es_std)
+    plot_iterations(Fs, Fs_std, Es, Es_std)
     
-    #eta, mu = model.cnf.backflow_potential()
-    #plot_backflow_potential(eta, mu, device)
-    #exit(0)
+    eta, mu = model.cnf.backflow_potential()
+    plot_backflow_potential(eta, mu, device)
+    exit(0)
     # ==============================================================================
 
     print("batch =", batch)
