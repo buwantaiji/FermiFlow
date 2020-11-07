@@ -75,10 +75,12 @@ class BetaVMC(torch.nn.Module):
         super(BetaVMC, self).__init__()
 
         self.beta = beta
-        self.statistics = "Boson" if ndown is None else "Fermion"
-        self.states = orbitals.fermion_states(nup, ndown) \
-                        if self.statistics == "Fermion" else \
-                        orbitals.boson_states(nup)
+        if ndown is None:
+            self.statistics = "Boson"
+            self.states = orbitals.boson_states(nup)
+        else:
+            self.statistics = "Fermion"
+            self.states = orbitals.fermion_states(nup, ndown)
         self.Nstates = len(self.states)
         self.log_state_weights = torch.nn.Parameter(torch.randn(self.Nstates))
 
@@ -117,6 +119,15 @@ class BetaVMC(torch.nn.Module):
         return logp
 
     def forward(self, batch):
+        """
+            Physical quantities of interest:
+        self.E, self.E_std: mean and standard deviation of energy.
+        self.F, self.F_std: mean and standard deviation of free energy.
+        self.S, self.S_analytical: entropy of the system, computed using Monte Carlo
+            sampling and the direct formula of von-Neumann, respectively.
+        self.logp_states_all: lop-probability of each of the considered states, 
+            which is represented by a 1D tensor of size self.Nstates.
+        """
         from utils import y_grad_laplacian
 
         _, x = self.sample((batch,))
@@ -132,13 +143,21 @@ class BetaVMC(torch.nn.Module):
             potential += self.sp_potential.V(x)
 
         Eloc = (kinetic + potential).detach()
+        self.E, self.E_std = Eloc.mean().item(), Eloc.std().item()
 
         state_indices = torch.tensor(list(self.state_indices_collection.elements()), 
                             device=x.device)
         logp_states = self.state_dist.log_prob(state_indices)
 
-        Floc = logp_states.detach() + self.beta * Eloc
+        Floc = Eloc + logp_states.detach() / self.beta
         self.F, self.F_std = Floc.mean().item(), Floc.std().item()
+
+        self.S = -logp_states.detach().mean().item()
+        self.logp_states_all = self.state_dist.log_prob(torch.arange(self.Nstates, 
+                            device=x.device)).detach()
+        self.S_analytical = -(self.logp_states_all * 
+                              self.logp_states_all.exp()).sum().item()
+
         gradF_phi = (logp_states * (Floc - self.F)).mean()
 
         Eloc_x_mean = torch.empty_like(Eloc)
@@ -146,7 +165,6 @@ class BetaVMC(torch.nn.Module):
         for idx, times in self.state_indices_collection.items():
             Eloc_x_mean[base_idx:base_idx+times] = Eloc[base_idx:base_idx+times].mean().expand(times)
             base_idx += times
-        gradF_theta = self.beta * (logp_full * (Eloc - Eloc_x_mean)).mean()
+        gradF_theta = (logp_full * (Eloc - Eloc_x_mean)).mean()
 
-        self.E, self.E_std = Eloc.mean().item(), Eloc.std().item()
         return gradF_phi, gradF_theta
