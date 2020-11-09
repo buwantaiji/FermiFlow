@@ -67,20 +67,26 @@ class GSVMC(torch.nn.Module):
         return gradE
 
 class BetaVMC(torch.nn.Module):
-    def __init__(self, beta, nup, ndown, orbitals, basedist, cnf, 
-                    pair_potential, sp_potential=None):
+    def __init__(self, beta, nup, ndown, deltaE, orbitals, basedist, cnf, 
+                 pair_potential, sp_potential=None):
         """
             Finite temperature Variational Monte Carlo calculation.
+
+        ---- NOTABLE ARGUMENTS ----
+            
+        deltaE: The maximum excitation energy of the truncated states. In the present
+            implementation, the case of Fermions trapped in 2D harmonic potential is
+            considered, and deltaE takes value up to 3. See orbitals.py for details.
         """
         super(BetaVMC, self).__init__()
 
         self.beta = beta
         if ndown is None:
             self.statistics = "Boson"
-            self.states = orbitals.boson_states(nup)
+            self.states = orbitals.boson_states(nup, deltaE)
         else:
             self.statistics = "Fermion"
-            self.states = orbitals.fermion_states(nup, ndown)
+            self.states = orbitals.fermion_states(nup, ndown, deltaE)
         self.Nstates = len(self.states)
         self.log_state_weights = torch.nn.Parameter(torch.randn(self.Nstates))
 

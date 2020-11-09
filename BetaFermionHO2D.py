@@ -72,6 +72,7 @@ if __name__ == "__main__":
 
     beta = 2.0
     nup, ndown = 6, 0
+    deltaE = 3
     device = torch.device("cuda:1")
 
     orbitals = HO2D()
@@ -93,11 +94,12 @@ if __name__ == "__main__":
     Z = 0.5
     pair_potential = CoulombPairPotential(Z)
 
-    model = BetaVMC(beta, nup, ndown, orbitals, basedist, cnf, 
+    model = BetaVMC(beta, nup, ndown, deltaE, orbitals, basedist, cnf, 
                     pair_potential, sp_potential=sp_potential)
     model.to(device=device)
 
     print("beta = %.1f" % beta)
+    print("deltaE = %.1f, total number of states = %d" % (deltaE, model.Nstates))
 
     """
     z, x = model.sample((8000,))
@@ -119,6 +121,7 @@ if __name__ == "__main__":
     checkpoint_dir = "datas/BetaFermionHO2D/init_zeros/" + \
             "beta_%.1f_" % beta + \
             "nup_%d_ndown_%d_" % (nup, ndown) + \
+            "deltaE_%.1f_" % deltaE + \
            ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
             "Deta_%d_" % D_hidden_eta + \
             "Dmu_%s_" % (D_hidden_mu if mu is not None else None) + \
