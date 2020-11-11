@@ -180,3 +180,44 @@ def test_FreeFermionHO2D_sample():
 
     samples = freefermion.sample(orbitals_up, orbitals_down, batch)
     assert samples.shape == (*batch, n, 2)
+
+def test_FreeFermionHO2D_sample_multstates():
+    """ Test the speed of MC sampling in the case of multiple states."""
+    from orbitals import HO2D
+    from base_dist import FreeFermion
+    from torch.distributions.categorical import Categorical
+    from collections import Counter
+    import time
+
+    ho2d = HO2D()
+
+    nup, ndown = 6, 0
+    deltaE = 3
+    batch, n = 8000, nup + ndown
+
+    states = ho2d.fermion_states(nup, ndown, deltaE)
+    print("\ndeltaE = %.1f, total number of states = %d" % (deltaE, len(states)))
+    state_dist = Categorical(logits=torch.randn(len(states)))
+    state_indices = state_dist.sample((batch,))
+    state_indices_collection = Counter(sorted(state_indices.tolist()))
+
+    device = torch.device("cuda:1")
+    freefermion = FreeFermion(device=device)
+
+    x = torch.randn(batch, n, 2, device=device)
+    logp = freefermion.log_prob_multstates(states, state_indices_collection, x)
+    assert logp.shape == (batch,)
+
+    start = time.time()
+    x = freefermion.sample_multstates(states, state_indices_collection, (batch,), 
+                                        method=1)
+    print("Method 1. Time to take (hours per 100 iters):", 
+            (time.time() - start) * 100 / 3600)
+    assert x.shape == (batch, n, 2)
+
+    start = time.time()
+    x = freefermion.sample_multstates(states, state_indices_collection, (batch,), 
+                                        method=2)
+    print("Method 2. Time to take (hours per 100 iters):", 
+            (time.time() - start) * 100 / 3600)
+    assert x.shape == (batch, n, 2)

@@ -99,28 +99,27 @@ class BetaVMC(torch.nn.Module):
     def sample(self, sample_shape):
         from torch.distributions.categorical import Categorical
         from collections import Counter
-        if len(sample_shape) != 1:
-            raise ValueError("BetaVMC.sample: sample_shape is required to have "
-                    "only one batch dimension.")
+        import time
 
-        print("Sample state indices...")
         self.state_dist = Categorical(logits=self.log_state_weights)
         state_indices = self.state_dist.sample(sample_shape)
         self.state_indices_collection = Counter(sorted(state_indices.tolist()))
-        zs = tuple( self.basedist.sample(*self.states[idx], (times,))
-                for idx, times in self.state_indices_collection.items() )
-        z = torch.cat(zs, dim=0)
+
+        start = time.time()
+        z = self.basedist.sample_multstates(self.states, 
+                self.state_indices_collection, sample_shape, method=1)
+        print("Finished sampling basis states. Time to take (hours per 100 iters):", 
+                (time.time() - start) * 100 / 3600)
+
         x = self.cnf.generate(z)
         return z, x 
 
     def logp(self, x, params_require_grad=False):
         z, delta_logp = self.cnf.delta_logp(x, params_require_grad=params_require_grad)
-        log_prob_z = torch.empty_like(delta_logp)
-        base_idx = 0
-        for idx, times in self.state_indices_collection.items():
-            log_prob_z[base_idx:base_idx+times] = \
-                self.basedist.log_prob(*self.states[idx], z[base_idx:base_idx+times, ...])
-            base_idx += times
+
+        log_prob_z = self.basedist.log_prob_multstates(self.states, 
+                self.state_indices_collection, z)
+
         logp = log_prob_z - delta_logp
         return logp
 
@@ -135,13 +134,19 @@ class BetaVMC(torch.nn.Module):
             which is represented by a 1D tensor of size self.Nstates.
         """
         from utils import y_grad_laplacian
+        import time
 
         _, x = self.sample((batch,))
         x.requires_grad_(True)
 
         logp_full = self.logp(x, params_require_grad=True)
 
+        start = time.time()
         logp, grad_logp, laplacian_logp = y_grad_laplacian(self.logp, x) 
+        print("Computed gradients of logp up to 2nd order. "
+                "Time to take (hours per 100 iters):", 
+                (time.time() - start) * 100 / 3600)
+
         kinetic = - 1/4 * laplacian_logp - 1/8 * (grad_logp**2).sum(dim=(-2, -1))
 
         potential = self.pair_potential.V(x)

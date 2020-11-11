@@ -148,10 +148,11 @@ class FreeFermion(BaseDist):
         logp = 2 * logabspsi
         return logp
 
-    def sample(self, orbitals_up, orbitals_down, sample_shape, equilibrim_steps=100, tau=0.1):
+    def sample(self, orbitals_up, orbitals_down, sample_shape, 
+            equilibrim_steps=100, tau=0.1):
         #print("Sample a Slater determinant...")
         nup, ndown = len(orbitals_up), len(orbitals_down)
-        x = torch.randn(*sample_shape, nup + ndown, 2, device=self.device)
+        x = torch.randn(*sample_shape, nup + ndown, 2)
         logp = self.log_prob(orbitals_up, orbitals_down, x)
         for _ in range(equilibrim_steps):
             new_x = x + tau * torch.randn_like(x)
@@ -160,4 +161,44 @@ class FreeFermion(BaseDist):
             accept = torch.rand_like(p_accept) < p_accept
             x[accept] = new_x[accept]
             logp[accept] = new_logp[accept]
+        x = x.to(device=self.device)
         return x
+
+    def log_prob_multstates(self, states, state_indices_collection, x):
+        if len(x.shape[:-2]) != 1:
+            raise ValueError("FreeFermion.log_prob_multstates: x is required to have "
+                    "only one batch dimension.")
+        batch = x.shape[0]
+        logp = torch.empty(batch, device=x.device)
+
+        base_idx = 0
+        for idx, times in state_indices_collection.items():
+            logp[base_idx:base_idx+times] = \
+                self.log_prob(*states[idx], x[base_idx:base_idx+times, ...])
+            base_idx += times
+        return logp
+
+    def sample_multstates(self, states, state_indices_collection, sample_shape, 
+            equilibrim_steps=100, tau=0.1, method=1):
+        if len(sample_shape) != 1:
+            raise ValueError("FreeFermion.sample_multstates: sample_shape is "
+                    "required to have only one batch dimension.")
+        if method == 1:
+            nup, ndown = len(states[0][0]), len(states[0][1])
+            x = torch.randn(*sample_shape, nup + ndown, 2)
+            logp = self.log_prob_multstates(states, state_indices_collection, x)
+            for _ in range(equilibrim_steps):
+                new_x = x + tau * torch.randn_like(x)
+                new_logp = self.log_prob_multstates(states, state_indices_collection, new_x)
+                p_accept = torch.exp(new_logp - logp)
+                accept = torch.rand_like(p_accept) < p_accept
+                x[accept] = new_x[accept]
+                logp[accept] = new_logp[accept]
+            x = x.to(device=self.device)
+            return x
+        elif method == 2:
+            xs = tuple( self.sample(*states[idx], (times,), 
+                        equilibrim_steps=equilibrim_steps, tau=tau)
+                    for idx, times in state_indices_collection.items() )
+            x = torch.cat(xs, dim=0)
+            return x
