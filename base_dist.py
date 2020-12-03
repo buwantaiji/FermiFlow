@@ -40,78 +40,7 @@ class FreeBosonHO(BaseDist):
         self.sample= self.dist.sample
 
 ####################################################################################
-
-class LogAbsSlaterDet(torch.autograd.Function):
-    """
-        Compute the logarithm of absolute value of a Slater determinant, given
-    some orbitals and coordinate vectors.
-        The backward of this primitive makes use of the specific structure of
-    Slater determinants, which would be more stable in some cases than the more
-    general approach.
-    """
-    @staticmethod
-    def forward(ctx, orbitals, x):
-        """
-            --- INPUT ---
-
-            orbitals: a tuple of length n containing the n orbitals {\phi_i(r)}, 
-            each of which is represented by a normal function.
-            
-            x: the particle coordinates. Generally, x has shape (*batch, n, dim),
-               where several batch dimensions are allowed.
-
-            --- OUTPUT ---
-
-            The nxn Slater determinants det(\phi_j(r_i)), which has shape (*batch)
-            in the general case.
-        """
-        *batch, n, _ = x.shape
-        D = torch.empty(*batch, n, n, device=x.device)
-        for i in range(n):
-            D[..., i] = orbitals[i](x)
-
-        ctx.save_for_backward(x)
-        ctx.orbitals = orbitals
-
-        _, logabsdet = D.slogdet()
-        return logabsdet
-    
-    @staticmethod
-    def backward(ctx, grad_logabsdet):
-        x, = ctx.saved_tensors
-        orbitals = ctx.orbitals
-        *batch, n, dim = x.shape
-
-        with torch.enable_grad():
-            """
-                Here in backward, it seems that the Slater matrix has to be created
-            again to guarantee the correctness of the implementation, especially for
-            higher-order gradients. WHY?
-            """
-            D = torch.empty(*batch, n, n, device=x.device)
-            for i in range(n):
-                D[..., i] = orbitals[i](x)
-
-            dorbitals = torch.empty(*batch, n, dim, n, device=x.device)
-            for i in range(n):
-                orbital_value = orbitals[i](x)
-                dorbitals[..., i], = torch.autograd.grad(orbital_value, x, 
-                        grad_outputs=torch.ones_like(orbital_value), create_graph=True)
-            dlogabsdet = torch.einsum("...ndj,...jn->...nd", dorbitals, D.inverse())
-            grad_x = grad_logabsdet[..., None, None] * dlogabsdet
-            return None, grad_x
-
-def logabsslaterdet(orbitals, x):
-    """
-        The "straight-forward" version of LogAbsSlaterDet, where the backward is
-    taken care of automatically by the torch.slogdet function.
-    """
-    *batch, n, _ = x.shape
-    D = torch.empty(*batch, n, n, device=x.device)
-    for i in range(n):
-        D[..., i] = orbitals[i](x)
-    _, logabsdet = D.slogdet() 
-    return logabsdet
+from slater import LogAbsSlaterDet, LogAbsSlaterDetMultStates
 
 class FreeFermion(BaseDist):
     """ 
@@ -130,6 +59,17 @@ class FreeFermion(BaseDist):
 
         Note the wavefunction above is not normalized. The normalization factor is 
     1 / sqrt(nup! * ndown!).
+
+    ================================================================================
+    Below are a diagram demonstrating dependencies among the various functions.
+    "1 --> 2" indicates function 2 depends on function 1. 
+
+    LogAbsSlaterDet --> log_prob --> sample --> sample_multstates_old
+                           |
+                           v
+             log_prob_multstates (method 1) --> sample_multstates (method 1)
+
+    LogAbsSlaterDetMultStates --> log_prob_multstates (method 2) --> sample_multstates (method 2)
     """
 
     def __init__(self, device=torch.device("cpu")):
@@ -138,9 +78,6 @@ class FreeFermion(BaseDist):
 
     def log_prob(self, orbitals_up, orbitals_down, x):
         nup, ndown = len(orbitals_up), len(orbitals_down)
-        if (nup + ndown != x.shape[-2]):
-            raise ValueError("The total number of orbitals is inconsistent with "
-                "the number of particles.")
         logabspsi = (LogAbsSlaterDet.apply(orbitals_up, x[..., :nup, :]) 
                         if nup != 0 else 0) \
                   + (LogAbsSlaterDet.apply(orbitals_down, x[..., nup:, :])
@@ -164,41 +101,77 @@ class FreeFermion(BaseDist):
         x = x.to(device=self.device)
         return x
 
-    def log_prob_multstates(self, states, state_indices_collection, x):
+    def log_prob_multstates(self, states, state_indices_collection, x, method=2):
         if len(x.shape[:-2]) != 1:
             raise ValueError("FreeFermion.log_prob_multstates: x is required to have "
                     "only one batch dimension.")
-        batch = x.shape[0]
-        logp = torch.empty(batch, device=x.device)
+        if method == 1:
 
-        base_idx = 0
-        for idx, times in state_indices_collection.items():
-            logp[base_idx:base_idx+times] = \
-                self.log_prob(*states[idx], x[base_idx:base_idx+times, ...])
-            base_idx += times
-        return logp
+            """ Making use of log_prob. """
+
+            batch = x.shape[0]
+            logp = torch.empty(batch, device=x.device)
+            base_idx = 0
+            for idx, times in state_indices_collection.items():
+                logp[base_idx:base_idx+times] = \
+                    self.log_prob(*states[idx], x[base_idx:base_idx+times, ...])
+                base_idx += times
+            return logp
+        elif method == 2:
+
+            """ Making use of the LogAbsSlaterDetMultStates primitive. """
+
+            states_up, states_down = tuple(zip(*states))
+            nup, ndown = len(states_up[0]), len(states_down[0])
+            logabspsi = (LogAbsSlaterDetMultStates.apply(states_up, state_indices_collection, x[..., :nup, :]) 
+                            if nup != 0 else 0) \
+                      + (LogAbsSlaterDetMultStates.apply(states_down, state_indices_collection, x[..., nup:, :])
+                            if ndown != 0 else 0)
+            logp = 2 * logabspsi
+            return logp
 
     def sample_multstates(self, states, state_indices_collection, sample_shape, 
-            equilibrim_steps=100, tau=0.1, method=1):
+            equilibrim_steps=100, tau=0.1, cpu=False, method=2):
         if len(sample_shape) != 1:
             raise ValueError("FreeFermion.sample_multstates: sample_shape is "
                     "required to have only one batch dimension.")
-        if method == 1:
-            nup, ndown = len(states[0][0]), len(states[0][1])
-            x = torch.randn(*sample_shape, nup + ndown, 2)
-            logp = self.log_prob_multstates(states, state_indices_collection, x)
-            for _ in range(equilibrim_steps):
-                new_x = x + tau * torch.randn_like(x)
-                new_logp = self.log_prob_multstates(states, state_indices_collection, new_x)
-                p_accept = torch.exp(new_logp - logp)
-                accept = torch.rand_like(p_accept) < p_accept
-                x[accept] = new_x[accept]
-                logp[accept] = new_logp[accept]
+
+        import time
+        nup, ndown = len(states[0][0]), len(states[0][1])
+        x = torch.randn(*sample_shape, nup + ndown, 2, 
+                        device=torch.device("cpu") if cpu else self.device)
+        logp = self.log_prob_multstates(states, state_indices_collection, x, method=method)
+        print("x.device:", x.device, "logp.device:", logp.device, "method:", method)
+
+        for _ in range(equilibrim_steps):
+            start_out = time.time()
+
+            new_x = x + tau * torch.randn_like(x)
+
+            start_in = time.time()
+            new_logp = self.log_prob_multstates(states, state_indices_collection, new_x, method=method)
+            t_in = time.time() - start_in
+
+            p_accept = torch.exp(new_logp - logp)
+            accept = torch.rand_like(p_accept) < p_accept
+            x[accept] = new_x[accept]
+            logp[accept] = new_logp[accept]
+
+            t_out = time.time() - start_out
+            print("t_out:", t_out, "t_in:", t_in, "t_remain:", t_out - t_in, "ratio:", t_in / t_out)
+
+        if cpu:
             x = x.to(device=self.device)
-            return x
-        elif method == 2:
-            xs = tuple( self.sample(*states[idx], (times,), 
-                        equilibrim_steps=equilibrim_steps, tau=tau)
-                    for idx, times in state_indices_collection.items() )
-            x = torch.cat(xs, dim=0)
-            return x
+        return x
+
+    def sample_multstates_old(self, states, state_indices_collection, sample_shape, 
+            equilibrim_steps=100, tau=0.1):
+        if len(sample_shape) != 1:
+            raise ValueError("FreeFermion.sample_multstates_old: sample_shape is "
+                    "required to have only one batch dimension.")
+
+        xs = tuple( self.sample(*states[idx], (times,), 
+                    equilibrim_steps=equilibrim_steps, tau=tau)
+                for idx, times in state_indices_collection.items() )
+        x = torch.cat(xs, dim=0)
+        return x

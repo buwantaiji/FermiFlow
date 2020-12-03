@@ -107,7 +107,7 @@ class BetaVMC(torch.nn.Module):
 
         start = time.time()
         z = self.basedist.sample_multstates(self.states, 
-                self.state_indices_collection, sample_shape, method=1)
+                self.state_indices_collection, sample_shape)
         print("Finished sampling basis states. Time to take (hours per 100 iters):", 
                 (time.time() - start) * 100 / 3600)
 
