@@ -70,9 +70,9 @@ if __name__ == "__main__":
     from potentials import HO, CoulombPairPotential
     from VMC import BetaVMC
 
-    beta = 3.0
+    beta = 2.0
     nup, ndown = 6, 0
-    deltaE = 3
+    deltaE = 4
     device = torch.device("cuda:1")
 
     orbitals = HO2D()

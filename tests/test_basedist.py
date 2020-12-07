@@ -87,6 +87,7 @@ def test_HO2D_slaterdet_multstates():
     for _ in range(Nstates):
         orbitals, orbitalEs = ho2d.fermion_states_random(n)
         states.append(orbitals)
+        print("orbitalEs:", orbitalEs)
         Es.append(sum(orbitalEs))
     print("StateEs:", Es)
     Es = torch.cat(tuple( Es[idx] * torch.ones(times) 
@@ -110,6 +111,7 @@ def test_HO2D_slaterdet_multstates():
         orbitals_up, orbitalEs_up = ho2d.fermion_states_random(nup)
         orbitals_down, orbitalEs_down = ho2d.fermion_states_random(ndown)
         states.append((orbitals_up, orbitals_down))
+        print("orbitalEs_up:", orbitalEs_up, "orbitalEs_down:", orbitalEs_down)
         Es.append(sum(orbitalEs_up + orbitalEs_down))
     print("StateEs:", Es)
     Es = torch.cat(tuple( Es[idx] * torch.ones(times) 
@@ -163,6 +165,9 @@ def test_HO2D_sample_multstates():
     state_dist = Categorical(logits=torch.randn(len(states)))
     state_indices = state_dist.sample((batch,))
     state_indices_collection = Counter(sorted(state_indices.tolist()))
+    for idx, times in state_indices_collection.items():
+        print("%d:%d" % (idx, times), end=" ")
+    print("\nbatch:", sum(times for times in state_indices_collection.values()))
 
     device = torch.device("cuda:1")
     freefermion = FreeFermion(device=device)

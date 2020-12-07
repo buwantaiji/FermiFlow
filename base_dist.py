@@ -136,29 +136,29 @@ class FreeFermion(BaseDist):
             raise ValueError("FreeFermion.sample_multstates: sample_shape is "
                     "required to have only one batch dimension.")
 
-        import time
+        #import time
         nup, ndown = len(states[0][0]), len(states[0][1])
         x = torch.randn(*sample_shape, nup + ndown, 2, 
                         device=torch.device("cpu") if cpu else self.device)
         logp = self.log_prob_multstates(states, state_indices_collection, x, method=method)
-        print("x.device:", x.device, "logp.device:", logp.device, "method:", method)
+        #print("x.device:", x.device, "logp.device:", logp.device, "method:", method)
 
         for _ in range(equilibrim_steps):
-            start_out = time.time()
+            #start_out = time.time()
 
             new_x = x + tau * torch.randn_like(x)
 
-            start_in = time.time()
+            #start_in = time.time()
             new_logp = self.log_prob_multstates(states, state_indices_collection, new_x, method=method)
-            t_in = time.time() - start_in
+            #t_in = time.time() - start_in
 
             p_accept = torch.exp(new_logp - logp)
             accept = torch.rand_like(p_accept) < p_accept
             x[accept] = new_x[accept]
             logp[accept] = new_logp[accept]
 
-            t_out = time.time() - start_out
-            print("t_out:", t_out, "t_in:", t_in, "t_remain:", t_out - t_in, "ratio:", t_in / t_out)
+            #t_out = time.time() - start_out
+            #print("t_out:", t_out, "t_in:", t_in, "t_remain:", t_out - t_in, "ratio:", t_in / t_out)
 
         if cpu:
             x = x.to(device=self.device)

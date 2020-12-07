@@ -40,14 +40,15 @@ class HO2D(Orbitals):
             lambda x: 1 / np.sqrt(3) * (2*x**3 - 3*x), 
             lambda x: 1 / np.sqrt(6) * (2*x**4 - 6*x**2 + 1.5), 
             lambda x: 1 / np.sqrt(15) * (2*x**5 - 10*x**3 + 7.5*x), 
+            lambda x: 1 / np.sqrt(5) * (2/3*x**6 - 5*x**4 + 7.5*x**2 - 1.25),
             ]
         orbital_2d = lambda nx, ny: lambda x: \
                         pi_sqrt_inverse * torch.exp(- 0.5 * (x**2).sum(dim=-1)) \
                         * orbitals_1d[nx](x[..., 0]) \
                         * orbitals_1d[ny](x[..., 1])
 
-        self.orbitals = [orbital_2d(nx, n - nx) for n in range(6) for nx in range(n + 1)]
-        self.Es = [n + 1 for n in range(6) for nx in range(n + 1)]
+        self.orbitals = [orbital_2d(nx, n - nx) for n in range(7) for nx in range(n + 1)]
+        self.Es = [n + 1 for n in range(7) for nx in range(n + 1)]
         self.E_indices = lambda n: tuple(range(n*(n+1)//2, (n+1)*(n+2)//2))
 
     def fermion_states_random(self, n):
@@ -61,9 +62,9 @@ class HO2D(Orbitals):
         if not (nup == 6 and ndown == 0):
             raise ValueError("nup and ndown must be 6 and 0 respectively "
                     "in the present implementation.")
-        if deltaE > 3:
+        if deltaE > 4:
             raise ValueError("The maximum excitation energy deltaE of the states "
-                    "is allowed to be at most 3 in the present implementation.")
+                    "is allowed to be at most 4 in the present implementation.")
 
         states = [(state, E) 
             for state, E in zip(itertools.combinations(self.orbitals, nup), 
@@ -76,6 +77,6 @@ class HO2D(Orbitals):
 
 if __name__ == "__main__":
     ho2d = HO2D()
-    for deltaE in range(4):
+    for deltaE in range(5):
         states = ho2d.fermion_states(6, 0, deltaE)
         print(len(states))
