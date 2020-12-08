@@ -59,6 +59,45 @@ def plot_backflow_potential(eta, mu, device, r_max=20.0):
     #plt.savefig(checkpoint_dir + "backflow.pdf")
     plt.show()
 
+def load_energies(filename, batch, model, device):
+    import os
+    if os.path.exists(filename):
+        print("Load energy data file: %s" % filename)
+        energies = torch.load(filename)
+        Es_flow = energies["Es_flow"]
+        Es_std_flow = energies["Es_std_flow"]
+    else:
+        print("Compute the energy data...")
+        Es_flow, Es_std_flow = model.compute_energies((batch,), device)
+        energies = {"Es_flow": Es_flow, 
+                    "Es_std_flow": Es_std_flow, 
+                    }
+        torch.save(energies, filename)
+        print("Energy data saved to file: %s" % filename)
+    return Es_flow, Es_std_flow
+
+def plot_energies(Es_original, Es_flow, Es_state_weights, fig_filename):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    xcenter_original, xcenter_flow, xcenter_state_weights = 0.0, 2.0, 4.0
+    color_original, color_flow, color_state_weights = "red", "green", "blue"
+    halfwidth = 0.5
+    N = 200
+    x_original = np.linspace(xcenter_original - halfwidth, xcenter_original + halfwidth, num=N)
+    x_flow = np.linspace(xcenter_flow - halfwidth, xcenter_flow + halfwidth, num=N)
+    x_state_weights = np.linspace(xcenter_state_weights - halfwidth, xcenter_state_weights + halfwidth, num=N)
+    for E_original, E_flow, E_state_weights in zip(
+            Es_original.cpu().numpy(), Es_flow.cpu().numpy(), Es_state_weights.cpu().numpy()):
+        plt.plot(x_original, E_original * np.ones(N), lw=0.5, color=color_original)
+        plt.plot(x_flow, E_flow * np.ones(N), lw=0.5, color=color_flow)
+        plt.plot(x_state_weights, E_state_weights * np.ones(N), lw=0.5, color=color_state_weights)
+    plt.xticks((xcenter_original, xcenter_flow, xcenter_state_weights), 
+               ("original", "flow", "state weights"))
+    plt.ylabel("$E$")
+    #plt.savefig(fig_filename)
+    plt.show()
+
 if __name__ == "__main__":
     from orbitals import HO2D
     from base_dist import FreeFermion
@@ -154,10 +193,27 @@ if __name__ == "__main__":
         Ss = torch.empty(0, device=device)
         Ss_analytical = torch.empty(0, device=device)
 
-    plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical)
+    #plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical)
     
-    eta, mu = model.cnf.backflow_potential()
-    plot_backflow_potential(eta, mu, device)
+    #eta, mu = model.cnf.backflow_potential()
+    #plot_backflow_potential(eta, mu, device)
+
+    energies_batch = 8000
+    energies_filename = checkpoint_dir + "energies_iters_%4d_batch_%d.pt" % (base_iter, energies_batch)
+    Es_flow, Es_std_flow = load_energies(energies_filename, energies_batch, model, device)
+
+    log_state_weights = model.log_state_weights.detach()
+    log_state_weights = log_state_weights - log_state_weights[0]
+    Es_state_weights =  -log_state_weights / beta + Es_flow[0]
+
+    print("Es_original:", model.Es_original)
+    print("Es_flow:", Es_flow)
+    #print("Es_std_flow:", Es_std_flow)
+    print("Es_state_weights:", Es_state_weights)
+    print("Es_state_weights - Es_flow:", Es_state_weights - Es_flow)
+    fig_filename = checkpoint_dir + "energies_iters_%4d_batch_%d.pdf" % (base_iter, energies_batch)
+    plot_energies(model.Es_original, Es_flow, Es_state_weights, fig_filename)
+
     exit(0)
     # ==============================================================================
 

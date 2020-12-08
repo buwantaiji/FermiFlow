@@ -83,10 +83,11 @@ class BetaVMC(torch.nn.Module):
         self.beta = beta
         if ndown is None:
             self.statistics = "Boson"
-            self.states = orbitals.boson_states(nup, deltaE)
+            self.states, self.Es_original = orbitals.boson_states(nup, deltaE)
         else:
             self.statistics = "Fermion"
-            self.states = orbitals.fermion_states(nup, ndown, deltaE)
+            self.states, self.Es_original = orbitals.fermion_states(nup, ndown, deltaE)
+        self.Es_original = torch.tensor(self.Es_original)
         self.Nstates = len(self.states)
         self.log_state_weights = torch.nn.Parameter(torch.randn(self.Nstates))
 
@@ -122,6 +123,37 @@ class BetaVMC(torch.nn.Module):
 
         logp = log_prob_z - delta_logp
         return logp
+
+    def compute_energies(self, sample_shape, device):
+        if self.statistics != "Fermion":
+            raise ValueError("BetaVMC.compute_energies: only fermion statistics is "
+                    "allowed in the present implementation.")
+
+        from utils import y_grad_laplacian
+        def logp_singlestate(x, orbitals_up, orbitals_down):
+            z, delta_logp = self.cnf.delta_logp(x, params_require_grad=False)
+            logp = self.basedist.log_prob(orbitals_up, orbitals_down, z) - delta_logp
+            return logp
+
+        Es_flow = torch.empty(self.Nstates, device=device)
+        Es_std_flow = torch.empty(self.Nstates, device=device)
+        for idx, (orbitals_up, orbitals_down) in enumerate(self.states):
+            z = self.basedist.sample(orbitals_up, orbitals_down, sample_shape)
+            x = self.cnf.generate(z)
+            x.requires_grad_(True)
+
+            logp, grad_logp, laplacian_logp = y_grad_laplacian(
+                    lambda x: logp_singlestate(x, orbitals_up, orbitals_down), x)
+            kinetic = - 1/4 * laplacian_logp - 1/8 * (grad_logp**2).sum(dim=(-2, -1))
+
+            potential = self.pair_potential.V(x)
+            if self.sp_potential:
+                potential += self.sp_potential.V(x)
+
+            Eloc = (kinetic + potential).detach()
+            Es_flow[idx], Es_std_flow[idx] = Eloc.mean(), Eloc.std()
+            print(idx, self.Es_original[idx].item(), Es_flow[idx].item())
+        return Es_flow, Es_std_flow
 
     def forward(self, batch):
         """

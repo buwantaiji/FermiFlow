@@ -1,5 +1,7 @@
-# checkpoint file
+# Checkpoint file
 *.chkp
+# Pytorch data file
+*.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

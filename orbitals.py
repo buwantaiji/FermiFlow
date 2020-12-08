@@ -60,23 +60,25 @@ class HO2D(Orbitals):
         import itertools
 
         if not (nup == 6 and ndown == 0):
-            raise ValueError("nup and ndown must be 6 and 0 respectively "
-                    "in the present implementation.")
+            raise ValueError("HO2D.fermion_states: nup and ndown must be 6 and 0 "
+                    "respectively in the present implementation.")
         if deltaE > 4:
-            raise ValueError("The maximum excitation energy deltaE of the states "
-                    "is allowed to be at most 4 in the present implementation.")
+            raise ValueError("HO2D.fermion_states: the maximum excitation energy "
+                    "deltaE of the states is allowed to be at most 4 in the "
+                    "present implementation.")
 
         states = [(state, E) 
             for state, E in zip(itertools.combinations(self.orbitals, nup), 
                                 itertools.combinations(self.Es, nup))
             if sum(E) <= sum(self.Es[:nup]) + deltaE]
-        states = sorted(states, key=lambda state_E: sum(state_E[1]))
-        states = tuple((state, ()) for state, _ in states)
-        #states = tuple(sum(E) for _, E in states)
-        return states
+        states, Es = zip( *sorted(states, key=lambda state_E: sum(state_E[1])) )
+        states = tuple((state, ()) for state in states)
+        Es = tuple(sum(E) for E in Es)
+        return states, Es
 
 if __name__ == "__main__":
     ho2d = HO2D()
     for deltaE in range(5):
-        states = ho2d.fermion_states(6, 0, deltaE)
-        print(len(states))
+        states, Es = ho2d.fermion_states(6, 0, deltaE)
+        print("deltaE =", deltaE, "Number of states:", len(states))
+        print("State energies:", Es)
