@@ -95,6 +95,7 @@ def plot_energies(Es_original, Es_flow, Es_state_weights, fig_filename):
     plt.xticks((xcenter_original, xcenter_flow, xcenter_state_weights), 
                ("original", "flow", "state weights"))
     plt.ylabel("$E$")
+    plt.ylim(13.5, 23.0)
     #plt.savefig(fig_filename)
     plt.show()
 

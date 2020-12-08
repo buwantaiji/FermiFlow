@@ -89,7 +89,7 @@ class FreeFermion(BaseDist):
             equilibrim_steps=100, tau=0.1):
         #print("Sample a Slater determinant...")
         nup, ndown = len(orbitals_up), len(orbitals_down)
-        x = torch.randn(*sample_shape, nup + ndown, 2)
+        x = torch.randn(*sample_shape, nup + ndown, 2, device=self.device)
         logp = self.log_prob(orbitals_up, orbitals_down, x)
         for _ in range(equilibrim_steps):
             new_x = x + tau * torch.randn_like(x)
@@ -98,7 +98,6 @@ class FreeFermion(BaseDist):
             accept = torch.rand_like(p_accept) < p_accept
             x[accept] = new_x[accept]
             logp[accept] = new_logp[accept]
-        x = x.to(device=self.device)
         return x
 
     def log_prob_multstates(self, states, state_indices_collection, x, method=2):
