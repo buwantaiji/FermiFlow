@@ -36,7 +36,8 @@ for filename, label, marker in zip(files[indices], labels[indices], markers):
     beta, E = data_jcp[filename]["beta"], data_jcp[filename]["E"]
     ax.plot(beta, E, linestyle="None", marker=marker, markerfacecolor="None", label=label)
 for deltaE in deltaEs:
-    ax.plot(beta_new, data[deltaE]["E"], linestyle="None", marker="o", label="$\Delta E_{cut} = %d$" % deltaE)
+    ax.plot(beta_new, data[deltaE]["E"], linestyle="None", marker="o",
+            label=r"$\Delta E_{\textrm{cut}} = %d$" % deltaE)
 ax.set_xlim(right=beta_new[-1] + 0.5)
 
 ax_inf.plot(beta_inf, data["inf"]["E"], linestyle="None", marker="o", label="ground state")
