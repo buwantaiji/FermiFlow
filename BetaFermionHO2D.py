@@ -24,9 +24,10 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical):
     plt.plot(iters, Es_numpy, label="$E$")
     plt.xscale("log")
     plt.yscale("log")
-    plt.xlabel("Iters")
-    plt.ylabel("Observable")
+    plt.xlabel("Iters", size=18)
+    plt.ylabel("Observable", size=18)
     plt.legend()
+    plt.tight_layout()
     #plt.savefig(checkpoint_dir + "observable.pdf")
     plt.show()
     
@@ -35,9 +36,10 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical):
     plt.plot(iters, Ss_numpy, label="MC sampling")
     plt.plot(iters, Ss_analytical_numpy, label="analytical")
     plt.xscale("log")
-    plt.xlabel("Iters")
-    plt.ylabel("Entropy")
+    plt.xlabel("Iters", size=18)
+    plt.ylabel("Entropy", size=18)
     plt.legend()
+    plt.tight_layout()
     #plt.savefig(checkpoint_dir + "entropy.pdf")
     plt.show()
 
@@ -49,13 +51,14 @@ def plot_backflow_potential(eta, mu, device, r_max=20.0):
     plt.plot(r, eta_r, label="$\eta(r)$")
     if mu is not None:
         mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-        plt.plot(r, mu_r, label="$\mu(r)$")
+        plt.plot(r, mu_r, label=r"$\xi(r)$")
     plt.xlabel("$r$")
-    plt.ylabel("Backflow potential")
-    plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
-              ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
+    plt.ylabel("Backflow potential", size=18)
+    #plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" +
+              #("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
     plt.grid(True)
     plt.legend()
+    plt.tight_layout()
     #plt.savefig(checkpoint_dir + "backflow.pdf")
     plt.show()
 
@@ -96,6 +99,7 @@ def plot_energies(Es_original, Es_flow, Es_state_weights, fig_filename):
                ("original", "flow", "state weights"))
     plt.ylabel("$E$")
     plt.ylim(13.5, 23.0)
+    plt.tight_layout()
     #plt.savefig(fig_filename)
     plt.show()
 
@@ -194,10 +198,10 @@ if __name__ == "__main__":
         Ss = torch.empty(0, device=device)
         Ss_analytical = torch.empty(0, device=device)
 
-    #plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical)
+    plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical)
     
-    #eta, mu = model.cnf.backflow_potential()
-    #plot_backflow_potential(eta, mu, device)
+    eta, mu = model.cnf.backflow_potential()
+    plot_backflow_potential(eta, mu, device)
 
     energies_batch = 8000
     energies_filename = checkpoint_dir + "energies_iters_%4d_batch_%d.pt" % (base_iter, energies_batch)
