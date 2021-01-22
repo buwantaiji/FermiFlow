@@ -96,11 +96,29 @@ def plot_energies(Es_original, Es_flow, Es_state_weights, fig_filename):
         plt.plot(x_flow, E_flow * np.ones(N), lw=0.5, color=color_flow)
         plt.plot(x_state_weights, E_state_weights * np.ones(N), lw=0.5, color=color_state_weights)
     plt.xticks((xcenter_original, xcenter_flow, xcenter_state_weights), 
-               ("original", "flow", "state weights"))
+               ("base", "flow", "state weights"))
     plt.ylabel("$E$")
-    plt.ylim(13.5, 23.0)
+    #plt.ylim(13.5, 23.0)
+    plt.ylim(59.0, 65.0)
     plt.tight_layout()
     #plt.savefig(fig_filename)
+    plt.show()
+
+def plot_density(x0, x1, rmax=5.0, bins=300):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    x0, x1 = x0.to(device=torch.device("cpu")).numpy(), x1.to(device=torch.device("cpu")).numpy()
+    rs0, rs1 = np.linalg.norm(x0, axis=-1), np.linalg.norm(x1, axis=-1)
+    n = rs0.shape[-1]
+    hist0, bin_edges0 = np.histogram(rs0, bins=bins, range=(0.0, rmax), density=True)
+    hist1, bin_edges1 = np.histogram(rs1, bins=bins, range=(0.0, rmax), density=True)
+    plt.plot((bin_edges0[:-1] + bin_edges0[1:])/2, n * hist0, label="base")
+    plt.plot((bin_edges1[:-1] + bin_edges1[1:])/2, n * hist1, label="flow")
+    plt.xlabel("$r$")
+    plt.ylabel(r"$2 \pi r \rho(r)$")
+    plt.legend()
+    plt.tight_layout()
+    #plt.savefig(checkpoint_dir + "density.pdf")
     plt.show()
 
 if __name__ == "__main__":
@@ -114,9 +132,9 @@ if __name__ == "__main__":
     from potentials import HO, CoulombPairPotential
     from VMC import BetaVMC
 
-    beta = 2.0
+    beta = 10.0
     nup, ndown = 6, 0
-    deltaE = 4
+    deltaE = 2
     device = torch.device("cuda:1")
 
     orbitals = HO2D()
@@ -135,7 +153,7 @@ if __name__ == "__main__":
     cnf = CNF(v, t_span)
 
     sp_potential = HO()
-    Z = 0.5
+    Z = 8.0
     pair_potential = CoulombPairPotential(Z)
 
     model = BetaVMC(beta, nup, ndown, deltaE, orbitals, basedist, cnf, 
@@ -203,8 +221,9 @@ if __name__ == "__main__":
     eta, mu = model.cnf.backflow_potential()
     plot_backflow_potential(eta, mu, device)
 
+    """
     energies_batch = 8000
-    energies_filename = checkpoint_dir + "energies_iters_%4d_batch_%d.pt" % (base_iter, energies_batch)
+    energies_filename = checkpoint_dir + "energies_iters_%04d_batch_%d.pt" % (base_iter, energies_batch)
     Es_flow, Es_std_flow = load_energies(energies_filename, energies_batch, model, device)
 
     log_state_weights = model.log_state_weights.detach()
@@ -218,8 +237,14 @@ if __name__ == "__main__":
     print("Es_state_weights - Es_flow:", Es_state_weights - Es_flow)
     fig_filename = checkpoint_dir + "energies_iters_%4d_batch_%d.pdf" % (base_iter, energies_batch)
     plot_energies(model.Es_original, Es_flow, Es_state_weights, fig_filename)
+    """
+
+    density_batch = 500000
+    x0, x1 = model.sample((density_batch,))
+    plot_density(x0, x1)
 
     exit(0)
+
     # ==============================================================================
 
     print("batch =", batch)
