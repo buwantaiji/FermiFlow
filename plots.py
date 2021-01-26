@@ -12,7 +12,7 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
     #print("Fs_std:", Fs_std)
     print("Es:", Es)
     #print("Es_std:", Es_std)
-    print("entropy:", Ss)
+    print("entropy (analytical):", Ss_analytical)
 
     assert Fs.shape == Es.shape
     iters, = Es.shape
@@ -116,6 +116,7 @@ def _plot_energylevels(Es_original, Es_flow, Es_state_weights, figname, savefig)
     plt.ylabel("$E$")
     #plt.ylim(13.5, 23.0)
     plt.ylim(59.0, 65.0)
+    #plt.ylim(28.5, 31.5)
     plt.tight_layout()
     if savefig: plt.savefig(figname)
     plt.show()

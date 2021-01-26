@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--Dmu", type=int, default=50, help="hidden layer size in the MLP representation of two-body backflow potential mu")
     parser.add_argument("--t0", type=float, default=0.0, help="starting time")
     parser.add_argument("--t1", type=float, default=1.0, help="ending time")
+    parser.add_argument("--boltzmann", action="store_true", help="initialize the state probabilities using Boltzmann distribution, otherwise using random Gaussian.")
 
     parser.add_argument("--baseiter", type=int, default=0, help="base iteration step")
     parser.add_argument("--analyze", action="store_true", help="analyze the data already obtained, instead of computing new iterations")
@@ -56,12 +57,14 @@ if __name__ == "__main__":
     sp_potential = HO()
     pair_potential = CoulombPairPotential(args.Z)
 
-    model = BetaVMC(args.beta, args.nup, args.ndown, args.deltaE, orbitals, basedist, cnf, 
-                    pair_potential, sp_potential=sp_potential)
+    model = BetaVMC(args.beta, args.nup, args.ndown, args.deltaE, args.boltzmann,
+                    orbitals, basedist, cnf, pair_potential, sp_potential=sp_potential)
     model.to(device=device)
 
     print("beta = %.1f, nup = %d, ndown = %d, Z = %.1f" % (args.beta, args.nup, args.ndown, args.Z))
     print("deltaE = %.1f, total number of states = %d" % (args.deltaE, model.Nstates))
+    print("State probabilities initialized with " +
+            ("Boltzmann distribution." if args.boltzmann else "random Gaussian."))
 
     """
     z, x = model.sample((8000,))
@@ -81,6 +84,7 @@ if __name__ == "__main__":
             "beta_%.1f_" % args.beta + \
             "nup_%d_ndown_%d_" % (args.nup, args.ndown) + \
             "deltaE_%.1f_" % args.deltaE + \
+           ("boltzmann_" if args.boltzmann else "") + \
            ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
             "Deta_%d_" % args.Deta + \
             "Dmu_%s_" % (args.Dmu if not args.nomu else None) + \
@@ -123,10 +127,8 @@ if __name__ == "__main__":
         
         plot_backflow_potential(model, device, savefig=False, savedir=checkpoint_dir)
 
-        """
         energylevels_batch = 8000
         plot_energylevels(model, energylevels_batch, device, checkpoint_dir, savefig=False)
-        """
 
         density_batch = 500000
         plot_density(model, density_batch, savefig=False, savedir=checkpoint_dir)
@@ -150,7 +152,7 @@ if __name__ == "__main__":
         for i in range(args.baseiter + 1, args.baseiter + args.iternum + 1):
             start = time.time()
 
-            gradF_phi, gradF_theta = model(batch)
+            gradF_phi, gradF_theta = model(args.batch)
             optimizer.zero_grad()
             gradF_phi.backward()
             gradF_theta.backward()
