@@ -130,7 +130,7 @@ if __name__ == "__main__":
         energylevels_batch = 8000
         plot_energylevels(model, energylevels_batch, device, checkpoint_dir, savefig=False)
 
-        density_batch = 500000
+        density_batch = 800000
         plot_density(model, density_batch, savefig=False, savedir=checkpoint_dir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
