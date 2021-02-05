@@ -120,18 +120,19 @@ if __name__ == "__main__":
 
     if args.analyze:
         print("Analyze the data already obtained.")
-
         from plots import *
-        plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, 
-                        savefig=False, savedir=checkpoint_dir)
-        
-        plot_backflow_potential(model, device, savefig=False, savedir=checkpoint_dir)
 
         energylevels_batch = 8000
-        plot_energylevels(model, energylevels_batch, device, checkpoint_dir, savefig=False)
+        S_flow = plot_energylevels(model, energylevels_batch, device, checkpoint_dir, savefig=False)
+        #S_flow = None
 
-        density_batch = 800000
-        plot_density(model, density_batch, savefig=False, savedir=checkpoint_dir)
+        plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
+                        savefig=False, savedir=checkpoint_dir)
+
+        #plot_backflow_potential(model, device, savefig=False, savedir=checkpoint_dir)
+
+        #density_batch = 800000
+        #plot_density(model, density_batch, savefig=False, savedir=checkpoint_dir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 

@@ -3,7 +3,7 @@ torch.set_default_dtype(torch.float64)
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
+def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
                     savefig=False, savedir=None):
     #print("F:", Fs[-1].item(), "F_std:", Fs_std[-1].item(), 
           #"E:", Es[-1].item(), "E_std:", Es_std[-1].item(), 
@@ -36,6 +36,7 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
     Ss_analytical_numpy = Ss_analytical.to(device=torch.device("cpu")).numpy()
     plt.plot(iters, Ss_numpy, label="MC sampling")
     plt.plot(iters, Ss_analytical_numpy, label="analytical")
+    if S_flow is not None: plt.plot(iters, S_flow * np.ones_like(iters), label="flow")
     plt.xscale("log")
     plt.xlabel("Iters", size=18)
     plt.ylabel("Entropy", size=18)
@@ -82,6 +83,11 @@ def plot_energylevels(model, batch, device, load_save_dir, savefig=False):
         torch.save(energies, filename)
         print("Energy data saved to file: %s" % filename)
 
+    # Compute entropy from the energy level data Es_flow.
+    from torch.distributions.categorical import Categorical
+    dist = Categorical(logits=-model.beta * Es_flow)
+    S_flow = dist.entropy().item()
+
     # Compute the energy level data Es_state_weights.
     log_state_weights = model.log_state_weights.detach()
     log_state_weights = log_state_weights - log_state_weights[0]
@@ -97,6 +103,7 @@ def plot_energylevels(model, batch, device, load_save_dir, savefig=False):
     # Plot the data.
     figname = load_save_dir + "energylevels_batch_%d.pdf" % batch
     _plot_energylevels(model.Es_original, Es_flow, Es_state_weights, figname, savefig)
+    return S_flow
 
 def _plot_energylevels(Es_original, Es_flow, Es_state_weights, figname, savefig):
     xcenter_original, xcenter_flow, xcenter_state_weights = 0.0, 2.0, 4.0
@@ -114,27 +121,42 @@ def _plot_energylevels(Es_original, Es_flow, Es_state_weights, figname, savefig)
     plt.xticks((xcenter_original, xcenter_flow, xcenter_state_weights), 
                ("base", "flow", "state weights"))
     plt.ylabel("$E$")
-    #plt.ylim(13.5, 23.0)
-    plt.ylim(59.0, 65.0)
-    #plt.ylim(28.5, 31.5)
+    plt.ylim(28.5, 31.5)
+    #plt.ylim(59.0, 65.0)
     plt.tight_layout()
     if savefig: plt.savefig(figname)
     plt.show()
 
 def plot_density(model, batch, rmax=5.0, bins=300, savefig=False, savedir=None):
-    x0, x1 = model.sample((batch,))
+    old_weights = model.log_state_weights
+    model.log_state_weights = torch.nn.Parameter(
+            -model.beta * (model.Es_original - model.Es_original[0]))
+    x0, _ = model.sample((batch,))
+    model.log_state_weights = old_weights
+    _, x1 = model.sample((batch,))
+
     x0, x1 = x0.cpu().numpy(), x1.cpu().numpy()
     rs0, rs1 = np.linalg.norm(x0, axis=-1), np.linalg.norm(x1, axis=-1)
     n = rs0.shape[-1]
     hist0, bin_edges0 = np.histogram(rs0, bins=bins, range=(0.0, rmax), density=True)
     hist1, bin_edges1 = np.histogram(rs1, bins=bins, range=(0.0, rmax), density=True)
-    plt.plot((bin_edges0[:-1] + bin_edges0[1:])/2, n * hist0, label="base")
-    plt.plot((bin_edges0[:-1] + bin_edges0[1:])/2, n * hist0 / ((bin_edges0[:-1] + bin_edges0[1:])/2), label="base2d")
-    plt.plot((bin_edges1[:-1] + bin_edges1[1:])/2, n * hist1, label="flow")
-    plt.plot((bin_edges1[:-1] + bin_edges1[1:])/2, n * hist1 / ((bin_edges1[:-1] + bin_edges1[1:])/2), label="flow2d")
+    bin_centers0 = (bin_edges0[:-1] + bin_edges0[1:])/2
+    bin_centers1 = (bin_edges1[:-1] + bin_edges1[1:])/2
+
+    plt.plot(bin_centers0, n * hist0, label="no interaction")
+    plt.plot(bin_centers1, n * hist1, label="flow")
     plt.xlabel("$r$")
     plt.ylabel(r"$2 \pi r \rho(r)$")
     plt.legend()
     plt.tight_layout()
-    if savefig: plt.savefig(savedir + "density.pdf")
+    if savefig: plt.savefig(savedir + "density1.pdf")
+    plt.show()
+
+    plt.plot(bin_centers0, n * hist0 / (2 * np.pi * bin_centers0), label="no interaction")
+    plt.plot(bin_centers1, n * hist1 / (2 * np.pi * bin_centers1), label="flow")
+    plt.xlabel("$r$")
+    plt.ylabel(r"$\rho(r)$")
+    plt.legend()
+    plt.tight_layout()
+    if savefig: plt.savefig(savedir + "density2.pdf")
     plt.show()
