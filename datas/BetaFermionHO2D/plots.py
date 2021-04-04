@@ -42,7 +42,7 @@ def load_model(beta, nup, ndown, Z,
     print("State probabilities initialized with " +
             ("Boltzmann distribution." if boltzmann else "random Gaussian."))
 
-    checkpoint_dir = "init_zeros/" + \
+    checkpoint_dir = "/data1/xieh/FlowVMC/master/BetaFermionHO2D/" + \
             "beta_%.1f_" % beta + \
             "nup_%d_ndown_%d_" % (nup, ndown) + \
             "deltaE_%.1f_" % deltaE + \
@@ -77,7 +77,7 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, ax_entropy_iterat
 
     iters = np.arange(1, iters + 1)
     
-    Ss_analytical_numpy = Ss_analytical.to(device=torch.device("cpu")).numpy()
+    Ss_analytical_numpy = Ss_analytical.cpu().numpy()
     ax_entropy_iterations.plot(iters, Ss_analytical_numpy, label=label)
 
 def entropy_from_flow(beta, batch, checkpoint_dir):
@@ -113,19 +113,36 @@ def plot_density(ax1, ax2, x, label, rmax=5.0, bins=300):
     ax2.plot(bin_centers, n * hist / (2 * np.pi * bin_centers), label=label)
 
 if __name__ == "__main__":
-    beta = 10.0
+    #=========================================================
+    #beta = 10.0
+    #=========================================================
     #nup, ndown = 3, 0
     #Zs = (2.0, 4.0, 6.0, 8.0)
     #cudas = (0, 1, 2, 3)
     #plot_indices = (0, 1, 2, 3)
+
     #nup, ndown = 4, 0
     #Zs = (2.0, 4.0, 6.0, 8.0)
     #cudas = (6, 6, 4, 7)
     #plot_indices = (0, 1, 2, 3)
-    nup, ndown = 6, 0
-    Zs = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
-    cudas = (1, 4, 5, 6, 0, 1, 2, 3, 4, 7)
-    plot_indices = (1, 3, 5, 7, 9)
+
+    #nup, ndown = 6, 0
+    #Zs = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+    #cudas = (1, 4, 5, 6, 0, 1, 2, 3, 4, 7)
+    #plot_indices = (1, 3, 5, 7, 9)
+
+    #nup, ndown = 10, 0
+    #Zs = (0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 4.0, 5.0)
+    #cudas = (1, 2, 3, 4, 5, 6, 1, 2)
+    #plot_indices = (0, 2, 4, 5, 6, 7)
+
+    #=========================================================
+    beta = 6.0
+    #=========================================================
+    nup, ndown = 10, 0
+    Zs = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+    cudas = (0, 1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 1)
+    plot_indices = (0, 5, 6, 8, 10, 12)
 
     deltaE = 2.0
     boltzmann = True
@@ -146,10 +163,11 @@ if __name__ == "__main__":
     ax_density2 = fig_density2.add_subplot(111)
 
     thermo_quantity_labels = ("Z", "F", "F_std", "E", "E_std", "S", "S_analytical", "S_flow")
+    #thermo_quantity_labels = ("Z", "F", "F_std", "E", "E_std", "S", "S_analytical")
     thermo_quantities = []
     energylevels_batch = 8000
-    density_batch = 800000
-    for idx, Z, cuda in zip(range(len(Zs)), Zs, cudas):
+    density_batch = 200000
+    for idx, (Z, cuda) in enumerate(zip(Zs, cudas)):
         model, states, checkpoint_dir = load_model(beta, nup, ndown, Z,
                 deltaE, cuda, Deta, nomu, Dmu, t0, t1, boltzmann, baseiter, batch)
         Fs, Fs_std, Es, Es_std, Ss, Ss_analytical = states["Fs"], states["Fs_std"], \
@@ -159,6 +177,7 @@ if __name__ == "__main__":
                 Es[-1].item(), Es_std[-1].item(), Ss[-1].item(), Ss_analytical[-1].item()
         S_flow = entropy_from_flow(beta, energylevels_batch, checkpoint_dir)
         thermo_quantities.append(np.array([Z, F, F_std, E, E_std, S, S_analytical, S_flow]))
+        #thermo_quantities.append(np.array([Z, F, F_std, E, E_std, S, S_analytical]))
 
         if idx in plot_indices:
             plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
@@ -177,6 +196,10 @@ if __name__ == "__main__":
                 model.log_state_weights = old_weights
             _, x = model.sample((density_batch,))
             plot_density(ax_density1, ax_density2, x, "$Z = %.1f$" % Z)
+
+        model = model.cpu()
+        del model, states, Fs, Fs_std, Es, Es_std, Ss, Ss_analytical
+        torch.cuda.empty_cache()
 
     params_str = "beta_%.1f_" % beta + \
             "nup_%d_ndown_%d_" % (nup, ndown) + \

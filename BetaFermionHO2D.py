@@ -11,6 +11,8 @@ from flow import CNF
 from potentials import HO, CoulombPairPotential
 from VMC import BetaVMC
 
+import os
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Finite-temperature variational Monte Carlo simulation")
@@ -78,25 +80,25 @@ if __name__ == "__main__":
     exit(111)
     """
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    checkpoint_dir = "datas/BetaFermionHO2D/init_zeros/" + \
-            "beta_%.1f_" % args.beta + \
-            "nup_%d_ndown_%d_" % (args.nup, args.ndown) + \
-            "deltaE_%.1f_" % args.deltaE + \
-           ("boltzmann_" if args.boltzmann else "") + \
-           ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
-            "Deta_%d_" % args.Deta + \
-            "Dmu_%s_" % (args.Dmu if not args.nomu else None) + \
-            "T0_%.1f_T1_%.1f_" % t_span + \
-            "batch_%d_" % args.batch + \
-            "Z_%.1f/" % args.Z
+    checkpoint_prefix = "/data1/xieh/FlowVMC/master/BetaFermionHO2D/"
+    data_dir = "beta_%.1f_" % args.beta + \
+               "nup_%d_ndown_%d_" % (args.nup, args.ndown) + \
+               "deltaE_%.1f_" % args.deltaE + \
+              ("boltzmann_" if args.boltzmann else "") + \
+              ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
+               "Deta_%d_" % args.Deta + \
+               "Dmu_%s_" % (args.Dmu if not args.nomu else None) + \
+               "T0_%.1f_T1_%.1f_" % t_span + \
+               "batch_%d_" % args.batch + \
+               "Z_%.1f/" % args.Z
             
+    checkpoint_dir = checkpoint_prefix + data_dir
     checkpoint = checkpoint_dir + "iters_%04d.chkp" % args.baseiter 
 
     # ==============================================================================
     # Load the model and optimizer states from a checkpoint file, if any.
-    import os
     if os.path.exists(checkpoint):
         print("Load checkpoint file: %s" % checkpoint)
         states = torch.load(checkpoint)
@@ -121,18 +123,21 @@ if __name__ == "__main__":
     if args.analyze:
         print("Analyze the data already obtained.")
         from plots import *
+        savedir = "datas/BetaFermionHO2D/init_zeros/" + data_dir
+        if not os.path.exists(savedir): os.makedirs(savedir)
 
         energylevels_batch = 8000
-        S_flow = plot_energylevels(model, energylevels_batch, device, checkpoint_dir, savefig=False)
+        S_flow = plot_energylevels(model, energylevels_batch, device,
+                    checkpoint_dir, savedir, savefig=True)
         #S_flow = None
 
         plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
-                        savefig=False, savedir=checkpoint_dir)
+                        savefig=True, savedir=savedir)
 
-        #plot_backflow_potential(model, device, savefig=False, savedir=checkpoint_dir)
+        plot_backflow_potential(model, device, savefig=False, savedir=savedir)
 
         #density_batch = 800000
-        #plot_density(model, density_batch, savefig=False, savedir=checkpoint_dir)
+        #plot_density(model, density_batch, savefig=False, savedir=savedir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 

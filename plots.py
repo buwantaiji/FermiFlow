@@ -5,9 +5,6 @@ import matplotlib.pyplot as plt
 
 def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
                     savefig=False, savedir=None):
-    #print("F:", Fs[-1].item(), "F_std:", Fs_std[-1].item(), 
-          #"E:", Es[-1].item(), "E_std:", Es_std[-1].item(), 
-          #"S:", Ss[-1].item(), "S_analytical:", Ss_analytical[-1].item())
     #print("Fs:", Fs)
     #print("Fs_std:", Fs_std)
     print("Es:", Es)
@@ -17,6 +14,10 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
     assert Fs.shape == Es.shape
     iters, = Es.shape
     print("Number of iterations:", iters)
+
+    print("F:", Fs[-1].item(), "F_std:", Fs_std[-1].item(),
+          "E:", Es[-1].item(), "E_std:", Es_std[-1].item(),
+          "S:", Ss[-1].item(), "S_analytical:", Ss_analytical[-1].item())
 
     iters = np.arange(1, iters + 1)
     Fs_numpy = Fs.to(device=torch.device("cpu")).numpy()
@@ -64,11 +65,11 @@ def plot_backflow_potential(model, device, r_max=20.0,
     if savefig: plt.savefig(savedir + "backflow.pdf")
     plt.show()
 
-def plot_energylevels(model, batch, device, load_save_dir, savefig=False):
+def plot_energylevels(model, batch, device, loaddir, savedir, savefig=False):
     import os
 
     # Load or compute from scratch the energy level data Es_flow and Es_std_flow.
-    filename = load_save_dir + "energylevels_batch_%d.pt" % batch
+    filename = loaddir + "energylevels_batch_%d.pt" % batch
     if os.path.exists(filename):
         print("Load energy data file: %s" % filename)
         energies = torch.load(filename)
@@ -101,7 +102,7 @@ def plot_energylevels(model, batch, device, load_save_dir, savefig=False):
     print("Es_state_weights - Es_flow:", Es_state_weights - Es_flow)
 
     # Plot the data.
-    figname = load_save_dir + "energylevels_batch_%d.pdf" % batch
+    figname = savedir + "energylevels_batch_%d.pdf" % batch
     _plot_energylevels(model.Es_original, Es_flow, Es_state_weights, figname, savefig)
     return S_flow
 
@@ -121,8 +122,19 @@ def _plot_energylevels(Es_original, Es_flow, Es_state_weights, figname, savefig)
     plt.xticks((xcenter_original, xcenter_flow, xcenter_state_weights), 
                ("base", "flow", "state weights"))
     plt.ylabel("$E$")
-    plt.ylim(28.5, 31.5)
-    #plt.ylim(59.0, 65.0)
+    #plt.ylim(41, 44)       # N = 10, Z = 0.5
+    #plt.ylim(43, 46)       # N = 10, Z = 0.6
+    #plt.ylim(45.5, 48)     # N = 10, Z = 0.7
+    #plt.ylim(47.5, 50)     # N = 10, Z = 0.8
+    #plt.ylim(50, 52.5)     # N = 10, Z = 0.9
+    #plt.ylim(52, 54.5)     # N = 10, Z = 1.0
+    #plt.ylim(71, 73)       # N = 10, Z = 2.0
+    #plt.ylim(87, 90)       # N = 10, Z = 3.0
+    #plt.ylim(103, 106)     # N = 10, Z = 4.0
+    #plt.ylim(117.5, 120)   # N = 10, Z = 5.0
+    #plt.ylim(131, 134)     # N = 10, Z = 6.0
+    plt.ylim(143.5, 146.5)  # N = 10, Z = 7.0
+    #plt.ylim(156, 159)     # N = 10, Z = 8.0
     plt.tight_layout()
     if savefig: plt.savefig(figname)
     plt.show()
