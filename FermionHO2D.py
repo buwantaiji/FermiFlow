@@ -1,94 +1,77 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
-def plot_iterations(Es, Es_std):
-    import numpy as np
-    import matplotlib.pyplot as plt
+from orbitals import HO2D
+from base_dist import FreeFermion
 
-    print("Es:", Es)
-    #print("Es_std:", Es_std)
-    iters, = Es.shape
-    print("Number of iterations:", iters)
+from MLP import MLP
+from equivariant_funs import Backflow
+from flow import CNF
 
-    Es_numpy = Es.to(device=torch.device("cpu")).numpy()
-    iters = np.arange(1, iters + 1)
-    plt.plot(iters, Es_numpy)
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.xlabel("Iters")
-    plt.ylabel("$E$")
-    #plt.savefig(checkpoint_dir + "Es.pdf")
-    plt.show()
-
-def plot_backflow_potential(eta, mu, device, r_max=20.0):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    r = np.linspace(0., r_max, num=int(r_max * 100))
-    eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-    plt.plot(r, eta_r, label="$\eta(r)$")
-    if mu is not None:
-        mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-        plt.plot(r, mu_r, label="$\mu(r)$")
-    plt.xlabel("$r$")
-    plt.ylabel("Backflow potential")
-    plt.title("$\\xi^{e-e}_i = \\sum_{j \\neq i} \\eta(|r_i - r_j|) (r_i - r_j)$" + 
-              ("\t\t$\\xi^{e-n}_i = \\mu(|r_i|) r_i$" if mu is not None else ""))
-    plt.grid(True)
-    plt.legend()
-    #plt.savefig(checkpoint_dir + "backflow.pdf")
-    plt.show()
+from potentials import HO, CoulombPairPotential
+from VMC import GSVMC
 
 if __name__ == "__main__":
-    from orbitals import HO2D
-    from base_dist import FreeFermion
+    import argparse
+    parser = argparse.ArgumentParser(description="Ground-state variational Monte Carlo simulation")
 
-    from MLP import MLP
-    from equivariant_funs import Backflow
-    from flow import CNF
+    parser.add_argument("--nup", type=int, default=6, help="number of spin-up electrons")
+    parser.add_argument("--ndown", type=int, default=0, help="number of spin-down electrons")
+    parser.add_argument("--Z", type=float, default=0.5, help="Coulomb interaction strength")
 
-    from potentials import HO, CoulombPairPotential
-    from VMC import GSVMC
+    parser.add_argument("--cuda", type=int, default=1, help="GPU device number")
+    parser.add_argument("--Deta", type=int, default=50, help="hidden layer size in the MLP representation of two-body backflow potential eta")
+    parser.add_argument("--nomu", action="store_true", help="do not use the one-body backflow potential mu")
+    parser.add_argument("--Dmu", type=int, default=50, help="hidden layer size in the MLP representation of two-body backflow potential mu")
+    parser.add_argument("--t0", type=float, default=0.0, help="starting time")
+    parser.add_argument("--t1", type=float, default=1.0, help="ending time")
 
-    nup, ndown = 6, 0
-    device = torch.device("cuda:1")
+    parser.add_argument("--baseiter", type=int, default=0, help="base iteration step")
+    parser.add_argument("--analyze", action="store_true", help="analyze the data already obtained, instead of computing new iterations")
+    parser.add_argument("--iternum", type=int, default=1000, help="number of new iterations")
+    parser.add_argument("--batch", type=int, default=8000, help="batch size")
+    
+    args = parser.parse_args()
+
+    device = torch.device("cuda:%d" % args.cuda)
 
     orbitals = HO2D()
     basedist = FreeFermion(device=device)
 
-    D_hidden_eta = D_hidden_mu = 50
-    eta = MLP(1, D_hidden_eta)
+    eta = MLP(1, args.Deta)
     eta.init_zeros()
-    mu = MLP(1, D_hidden_mu)
-    mu.init_zeros()
-    #mu = None
+    if not args.nomu:
+        mu = MLP(1, args.Dmu)
+        mu.init_zeros()
+    else:
+        mu = None
     v = Backflow(eta, mu=mu)
 
-    t_span = (0., 1.)
+    t_span = (args.t0, args.t1)
 
     cnf = CNF(v, t_span)
 
     sp_potential = HO()
-    Z = 0.5
-    pair_potential = CoulombPairPotential(Z)
+    pair_potential = CoulombPairPotential(args.Z)
 
-    model = GSVMC(nup, ndown, orbitals, basedist, cnf, 
+    model = GSVMC(args.nup, args.ndown, orbitals, basedist, cnf, 
                     pair_potential, sp_potential=sp_potential)
     model.to(device=device)
+    print("nup = %d, ndown = %d, Z = %.1f" % (args.nup, args.ndown, args.Z))
+
+
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
-    batch = 8000
-    base_iter = 0
-
-    checkpoint_dir = "datas/FermionHO2D/init_zeros/" + \
-            "nup_%d_ndown_%d_" % (nup, ndown) + \
-           ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
-            "Deta_%d_" % D_hidden_eta + \
-            "Dmu_%s_" % (D_hidden_mu if mu is not None else None) + \
-            "T0_%.1f_T1_%.1f_" % t_span + \
-            "batch_%d_" % batch + \
-            "Z_%.1f/" % Z
-            
-    checkpoint = checkpoint_dir + "iters_%04d.chkp" % base_iter 
+    checkpoint_prefix = "/data1/xieh/FlowVMC/master/FermionHO2D/init_zeros/"
+    data_dir = "nup_%d_ndown_%d_" % (args.nup, args.ndown) + \
+              ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
+               "Deta_%d_" % args.Deta + \
+               "Dmu_%s_" % (args.Dmu if not args.nomu else None) + \
+               "T0_%.1f_T1_%.1f_" % t_span + \
+               "batch_%d_" % args.batch + \
+               "Z_%.1f/" % args.Z
+    checkpoint_dir = checkpoint_prefix + data_dir
+    checkpoint = checkpoint_dir + "iters_%04d.chkp" % args.baseiter 
 
     # ==============================================================================
     # Load the model and optimizer states from a checkpoint file, if any.
@@ -104,48 +87,46 @@ if __name__ == "__main__":
         print("Start from scratch...")
         Es = torch.empty(0, device=device)
         Es_std = torch.empty(0, device=device)
-
-    #plot_iterations(Es, Es_std)
-    
-    #eta, mu = model.cnf.backflow_potential()
-    #plot_backflow_potential(eta, mu, device)
-    #exit(0)
     # ==============================================================================
 
-    print("batch =", batch)
-    iter_num = 1000
-    print("iter_num:", iter_num)
+    if args.analyze:
+        print("Analyze the data already obtained.")
+        from plots import *
+        savedir = "datas/FermionHO2D/init_zeros/" + data_dir
+        if not os.path.exists(savedir): os.makedirs(savedir)
 
-    new_Es = torch.empty(iter_num, device=device)
-    new_Es_std = torch.empty(iter_num, device=device)
-    Es = torch.cat((Es, new_Es))
-    Es_std = torch.cat((Es_std, new_Es_std))
+        plot_iterations_GS(Es, Es_std, savefig=True, savedir=savedir)
+        plot_backflow_potential(model, device, savefig=True, savedir=savedir)
+    else:
+        print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 
-    import time
-    for i in range(base_iter + 1, base_iter + iter_num + 1):
-        start = time.time()
+        new_Es = torch.empty(args.iternum, device=device)
+        new_Es_std = torch.empty(args.iternum, device=device)
+        Es = torch.cat((Es, new_Es))
+        Es_std = torch.cat((Es_std, new_Es_std))
 
-        gradE = model(batch)
-        optimizer.zero_grad()
-        gradE.backward()
-        optimizer.step()
+        import time
+        for i in range(args.baseiter + 1, args.baseiter + args.iternum + 1):
+            start = time.time()
 
-        speed = (time.time() - start) * 100 / 3600
-        print("iter: %03d" % i, "E:", model.E, "E_std:", model.E_std, 
-                "Instant speed (hours per 100 iters):", speed)
+            gradE = model(args.batch)
+            optimizer.zero_grad()
+            gradE.backward()
+            optimizer.step()
 
-        Es[i - 1] = model.E
-        Es_std[i - 1] = model.E_std
+            speed = (time.time() - start) * 100 / 3600
+            print("iter: %03d" % i, "E:", model.E, "E_std:", model.E_std, 
+                    "Instant speed (hours per 100 iters):", speed)
 
-        """
-        nn_state_dict = model.state_dict()
-        optimizer_state_dict = optimizer.state_dict()
-        states = {"nn_state_dict": nn_state_dict, 
-                "optimizer_state_dict": optimizer_state_dict, 
-                "Es": Es[:i], 
-                "Es_std": Es_std[:i],
-                }
-        checkpoint = checkpoint_dir + "iters_%04d.chkp" % i 
-        torch.save(states, checkpoint)
-        #print("States saved to the checkpoint file: %s" % checkpoint)
-        """
+            Es[i - 1] = model.E
+            Es_std[i - 1] = model.E_std
+
+            nn_state_dict = model.state_dict()
+            optimizer_state_dict = optimizer.state_dict()
+            states = {"nn_state_dict": nn_state_dict, 
+                    "optimizer_state_dict": optimizer_state_dict, 
+                    "Es": Es[:i], 
+                    "Es_std": Es_std[:i],
+                    }
+            checkpoint = checkpoint_dir + "iters_%04d.chkp" % i 
+            torch.save(states, checkpoint)

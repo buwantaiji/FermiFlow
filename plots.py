@@ -3,6 +3,23 @@ torch.set_default_dtype(torch.float64)
 import numpy as np
 import matplotlib.pyplot as plt
 
+def plot_iterations_GS(Es, Es_std, savefig=False, savedir=None):
+    print("Es:", Es)
+    #print("Es_std:", Es_std)
+    iters, = Es.shape
+    print("Number of iterations:", iters)
+
+    iters = np.arange(1, iters + 1)
+    Es_numpy = Es.cpu().numpy()
+    plt.plot(iters, Es_numpy)
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.xlabel("Iters", size=18)
+    plt.ylabel("$E$", size=18)
+    plt.tight_layout()
+    if savefig: plt.savefig(savedir + "Es.pdf")
+    plt.show()
+
 def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
                     savefig=False, savedir=None):
     #print("Fs:", Fs)
@@ -20,8 +37,7 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
           "S:", Ss[-1].item(), "S_analytical:", Ss_analytical[-1].item())
 
     iters = np.arange(1, iters + 1)
-    Fs_numpy = Fs.to(device=torch.device("cpu")).numpy()
-    Es_numpy = Es.to(device=torch.device("cpu")).numpy()
+    Fs_numpy, Es_numpy = Fs.cpu().numpy(), Es.cpu().numpy()
     plt.plot(iters, Fs_numpy, label="$F$")
     plt.plot(iters, Es_numpy, label="$E$")
     plt.xscale("log")
@@ -33,8 +49,7 @@ def plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
     if savefig: plt.savefig(savedir + "observable.pdf")
     plt.show()
     
-    Ss_numpy = Ss.to(device=torch.device("cpu")).numpy()
-    Ss_analytical_numpy = Ss_analytical.to(device=torch.device("cpu")).numpy()
+    Ss_numpy, Ss_analytical_numpy = Ss.cpu().numpy(), Ss_analytical.cpu().numpy()
     plt.plot(iters, Ss_numpy, label="MC sampling")
     plt.plot(iters, Ss_analytical_numpy, label="analytical")
     if S_flow is not None: plt.plot(iters, S_flow * np.ones_like(iters), label="flow")
