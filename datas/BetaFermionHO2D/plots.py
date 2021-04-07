@@ -113,46 +113,57 @@ def plot_density(ax1, ax2, x, label, rmax=5.0, bins=300):
     ax2.plot(bin_centers, n * hist / (2 * np.pi * bin_centers), label=label)
 
 if __name__ == "__main__":
-    #=========================================================
+    #################################################################
+    # Fix beta, vary Z
+    #################################################################
     #beta = 10.0
-    #=========================================================
     #nup, ndown = 3, 0
     #Zs = (2.0, 4.0, 6.0, 8.0)
     #cudas = (0, 1, 2, 3)
     #plot_indices = (0, 1, 2, 3)
 
+    #beta = 10.0
     #nup, ndown = 4, 0
     #Zs = (2.0, 4.0, 6.0, 8.0)
     #cudas = (6, 6, 4, 7)
     #plot_indices = (0, 1, 2, 3)
 
+    #beta = 10.0
     #nup, ndown = 6, 0
     #Zs = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
     #cudas = (1, 4, 5, 6, 0, 1, 2, 3, 4, 7)
     #plot_indices = (1, 3, 5, 7, 9)
 
+    #beta = 10.0
     #nup, ndown = 10, 0
     #Zs = (0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 4.0, 5.0)
     #cudas = (1, 2, 3, 4, 5, 6, 1, 2)
     #plot_indices = (0, 2, 4, 5, 6, 7)
 
-    #=========================================================
-    beta = 6.0
-    #=========================================================
-    nup, ndown = 10, 0
-    Zs = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
-    cudas = (0, 1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 1)
-    plot_indices = (0, 5, 6, 8, 10, 12)
+    #beta = 6.0
+    #nup, ndown = 10, 0
+    #Zs = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+    #cudas = (0, 1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 1)
+    #plot_indices = (0, 5, 6, 8, 10, 12)
 
-    deltaE = 2.0
-    boltzmann = True
+    #################################################################
+    # Fix Z, vary beta
+    #################################################################
+    Z = 0.5
+    nup, ndown = 6, 0
+    betas = (2.0, 2.5, 3.0, 4.0, 5.0, 6.0)
+    cudas = (1, 2, 3, 4, 5, 6)
+
+    deltaE = 4.0
+    boltzmann = False
     Deta = 50
     nomu = False
     Dmu = 50
     t0, t1 = 0., 1.
     batch = 8000
-    baseiter = 3000
+    baseiter = 1000
 
+    """
     fig_entropy_iterations = plt.figure()
     ax_entropy_iterations = fig_entropy_iterations.add_subplot(111)
     fig_backflow = plt.figure()
@@ -161,13 +172,16 @@ if __name__ == "__main__":
     ax_density1 = fig_density1.add_subplot(111)
     fig_density2 = plt.figure()
     ax_density2 = fig_density2.add_subplot(111)
+    """
 
-    thermo_quantity_labels = ("Z", "F", "F_std", "E", "E_std", "S", "S_analytical", "S_flow")
+    #thermo_quantity_labels = ("Z", "F", "F_std", "E", "E_std", "S", "S_analytical", "S_flow")
     #thermo_quantity_labels = ("Z", "F", "F_std", "E", "E_std", "S", "S_analytical")
+    thermo_quantity_labels = ("beta", "F", "F_std", "E", "E_std", "S", "S_analytical")
     thermo_quantities = []
     energylevels_batch = 8000
     density_batch = 200000
-    for idx, (Z, cuda) in enumerate(zip(Zs, cudas)):
+    #for idx, (Z, cuda) in enumerate(zip(Zs, cudas)):
+    for idx, (beta, cuda) in enumerate(zip(betas, cudas)):
         model, states, checkpoint_dir = load_model(beta, nup, ndown, Z,
                 deltaE, cuda, Deta, nomu, Dmu, t0, t1, boltzmann, baseiter, batch)
         Fs, Fs_std, Es, Es_std, Ss, Ss_analytical = states["Fs"], states["Fs_std"], \
@@ -175,33 +189,44 @@ if __name__ == "__main__":
 
         F, F_std, E, E_std, S, S_analytical = Fs[-1].item(), Fs_std[-1].item(), \
                 Es[-1].item(), Es_std[-1].item(), Ss[-1].item(), Ss_analytical[-1].item()
-        S_flow = entropy_from_flow(beta, energylevels_batch, checkpoint_dir)
-        thermo_quantities.append(np.array([Z, F, F_std, E, E_std, S, S_analytical, S_flow]))
+        #S_flow = entropy_from_flow(beta, energylevels_batch, checkpoint_dir)
+        #thermo_quantities.append(np.array([Z, F, F_std, E, E_std, S, S_analytical, S_flow]))
         #thermo_quantities.append(np.array([Z, F, F_std, E, E_std, S, S_analytical]))
+        thermo_quantities.append(np.array([beta, F, F_std, E, E_std, S, S_analytical]))
 
-        if idx in plot_indices:
-            plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
-                    ax_entropy_iterations, "$Z = %.1f$" % Z)
-
-            color = next(ax_backflow._get_lines.prop_cycler)['color']
-            plot_backflow_potential(model, cuda, ax_backflow, color,
-                    "$\eta(r), Z = %.1f$" % Z, r"$\xi(r), Z = %.1f$" % Z)
-
-            if idx == plot_indices[0]:
-                old_weights = model.log_state_weights
-                model.log_state_weights = torch.nn.Parameter(
-                        -model.beta * (model.Es_original - model.Es_original[0]))
-                x, _ = model.sample((density_batch,))
-                plot_density(ax_density1, ax_density2, x, "no interaction")
-                model.log_state_weights = old_weights
-            _, x = model.sample((density_batch,))
-            plot_density(ax_density1, ax_density2, x, "$Z = %.1f$" % Z)
+        #if idx in plot_indices:
+            #plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
+                    #ax_entropy_iterations, "$Z = %.1f$" % Z)
+#
+            #color = next(ax_backflow._get_lines.prop_cycler)['color']
+            #plot_backflow_potential(model, cuda, ax_backflow, color,
+                    #"$\eta(r), Z = %.1f$" % Z, r"$\xi(r), Z = %.1f$" % Z)
+#
+            #if idx == plot_indices[0]:
+                #old_weights = model.log_state_weights
+                #model.log_state_weights = torch.nn.Parameter(
+                        #-model.beta * (model.Es_original - model.Es_original[0]))
+                #x, _ = model.sample((density_batch,))
+                #plot_density(ax_density1, ax_density2, x, "no interaction")
+                #model.log_state_weights = old_weights
+            #_, x = model.sample((density_batch,))
+            #plot_density(ax_density1, ax_density2, x, "$Z = %.1f$" % Z)
 
         model = model.cpu()
         del model, states, Fs, Fs_std, Es, Es_std, Ss, Ss_analytical
         torch.cuda.empty_cache()
 
+    """
     params_str = "beta_%.1f_" % beta + \
+            "nup_%d_ndown_%d_" % (nup, ndown) + \
+            "deltaE_%.1f_" % deltaE + \
+           ("boltzmann_" if boltzmann else "") + \
+            "Deta_%d_" % Deta + \
+            "Dmu_%s_" % (Dmu if not nomu else None) + \
+            "T0_%.1f_T1_%.1f_" % (t0, t1) + \
+            "batch_%d" % batch
+    """
+    params_str = "Z_%.1f_" % Z + \
             "nup_%d_ndown_%d_" % (nup, ndown) + \
             "deltaE_%.1f_" % deltaE + \
            ("boltzmann_" if boltzmann else "") + \
@@ -212,7 +237,8 @@ if __name__ == "__main__":
     sumup_file = "sumup_%s.txt" % params_str
 
     np.savetxt(sumup_file, thermo_quantities, fmt="%18.15f",
-            header="%16s %18s %18s %18s %18s %18s %18s %18s" % thermo_quantity_labels)
+            header="%16s %18s %18s %18s %18s %18s %18s" % thermo_quantity_labels)
+    exit(0)
 
     ax_entropy_iterations.set_xscale("log")
     ax_entropy_iterations.set_xlabel("Iters", size=18)
