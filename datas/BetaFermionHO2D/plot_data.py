@@ -39,11 +39,12 @@ for filename, label, marker, color in zip(files[indices], labels[indices], marke
     beta, E, E_error = data_jcp[filename]["beta"], data_jcp[filename]["E"], data_jcp[filename]["E_error"]
     # Only take the data points for beta>=2.
     beta, E, E_error = beta[3:], E[3:], E_error[3:]
-    ax.errorbar(beta, E, yerr=E_error, linestyle="None", color=color, marker=marker, markerfacecolor="None", label=label)
+    ax.errorbar(beta, E, yerr=E_error, linestyle="None", capsize=7, color=color,
+                marker=marker, markerfacecolor="None", label=label)
 deltaE = 4
 beta_new, E, E_error = data[deltaE]["beta"], data[deltaE]["E"], data[deltaE]["E_error"]
-ax.errorbar(beta_new, E, yerr=E_error/np.sqrt(8000),
-            linestyle="None", marker="o", color="red", label="FermiFlow")
+ax.errorbar(beta_new, E, yerr=E_error/np.sqrt(8000), linestyle="None", capsize=7,
+            marker="o", color="red", label="FermiFlow")
 ax.set_xlim(right=beta_new[-1] + 0.5)
 
 ax_inf.plot(beta_inf, data["inf"]["E"], linestyle="None", marker="o", color="red")

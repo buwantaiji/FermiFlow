@@ -154,15 +154,22 @@ def _plot_energylevels(Es_original, Es_flow, Es_state_weights, figname, savefig)
     if savefig: plt.savefig(figname)
     plt.show()
 
-def plot_density(model, batch, rmax=5.0, bins=300, savefig=False, savedir=None):
-    old_weights = model.log_state_weights
-    model.log_state_weights = torch.nn.Parameter(
-            -model.beta * (model.Es_original - model.Es_original[0]))
-    x0, _ = model.sample((batch,))
-    model.log_state_weights = old_weights
-    _, x1 = model.sample((batch,))
+def plot_density(model, batch, times=1, rmax=5.0, bins=300, savefig=False, savedir=None):
+    for i in range(times):
+        old_weights = model.log_state_weights
+        model.log_state_weights = torch.nn.Parameter(
+                -model.beta * (model.Es_original - model.Es_original[0]))
+        x0_new, _ = model.sample((batch,))
+        model.log_state_weights = old_weights
+        _, x1_new = model.sample((batch,))
 
+        x0 = x0_new if i==0 else torch.cat((x0, x0_new), dim=0)
+        x1 = x1_new if i==0 else torch.cat((x1, x1_new), dim=0)
+
+    print("x0.shape:", x0.shape)
+    print("x1.shape:", x1.shape)
     x0, x1 = x0.cpu().numpy(), x1.cpu().numpy()
+
     rs0, rs1 = np.linalg.norm(x0, axis=-1), np.linalg.norm(x1, axis=-1)
     n = rs0.shape[-1]
     hist0, bin_edges0 = np.histogram(rs0, bins=bins, range=(0.0, rmax), density=True)
@@ -186,4 +193,12 @@ def plot_density(model, batch, rmax=5.0, bins=300, savefig=False, savedir=None):
     plt.legend()
     plt.tight_layout()
     if savefig: plt.savefig(savedir + "density2.pdf")
+    plt.show()
+
+    xs, ys = x1[..., 0].flatten(), x1[..., 1].flatten()
+    H, xedges, yedges = np.histogram2d(xs, ys, bins=2*bins, range=((-rmax, rmax), (-rmax, rmax)),
+                density=True)
+    plt.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
+                cmap="inferno", vmin=0, vmax=0.7)
+    if savefig: plt.savefig(savedir + "density2D.pdf")
     plt.show()
