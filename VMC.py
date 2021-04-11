@@ -99,7 +99,7 @@ class BetaVMC(torch.nn.Module):
         self.pair_potential = pair_potential
         self.sp_potential = sp_potential
 
-    def sample(self, sample_shape):
+    def sample(self, sample_shape, nframes=None):
         from torch.distributions.categorical import Categorical
         from collections import Counter
         import time
@@ -114,7 +114,7 @@ class BetaVMC(torch.nn.Module):
         print("Finished sampling basis states. Time to take (hours per 100 iters):", 
                 (time.time() - start) * 100 / 3600)
 
-        x = self.cnf.generate(z)
+        x = self.cnf.generate(z, nframes=nframes)
         return z, x 
 
     def logp(self, x, params_require_grad=False):

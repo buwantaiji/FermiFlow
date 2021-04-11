@@ -2,6 +2,7 @@ import torch
 torch.set_default_dtype(torch.float64)
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def plot_iterations_GS(Es, Es_std, savefig=False, savedir=None):
     print("Es:", Es)
@@ -81,8 +82,6 @@ def plot_backflow_potential(model, device, r_max=20.0,
     plt.show()
 
 def plot_energylevels(model, batch, device, loaddir, savedir, savefig=False):
-    import os
-
     # Load or compute from scratch the energy level data Es_flow and Es_std_flow.
     filename = loaddir + "energylevels_batch_%d.pt" % batch
     if os.path.exists(filename):
@@ -154,51 +153,65 @@ def _plot_energylevels(Es_original, Es_flow, Es_state_weights, figname, savefig)
     if savefig: plt.savefig(figname)
     plt.show()
 
-def plot_density(model, batch, times=1, rmax=5.0, bins=300, savefig=False, savedir=None):
-    for i in range(times):
-        old_weights = model.log_state_weights
-        model.log_state_weights = torch.nn.Parameter(
-                -model.beta * (model.Es_original - model.Es_original[0]))
-        x0_new, _ = model.sample((batch,))
-        model.log_state_weights = old_weights
-        _, x1_new = model.sample((batch,))
+def plot_density2D(model, batch, loaddir, times=1, rmax=5.0, bins=500,
+                   savefig=False, savedir=None):
+    # Load or sample from scratch the electron coordinates.
+    filename = loaddir + "coordinates_flow_batch_%d.npy" % (batch*times)
+    if os.path.exists(filename):
+        print("Load coordinates file: %s" % filename)
+        x = np.load(filename)
+    else:
+        print("Sample the coordinates from scratch...")
+        for i in range(times):
+            _, x_new = model.sample((batch,))
+            x = x_new if i==0 else torch.cat((x, x_new), dim=0)
+        x = x.cpu().numpy()
+        print("x.shape:", x.shape)
+        np.save(filename, x)
+        print("Coordinates saved to file: %s" % filename)
 
-        x0 = x0_new if i==0 else torch.cat((x0, x0_new), dim=0)
-        x1 = x1_new if i==0 else torch.cat((x1, x1_new), dim=0)
+    n = x.shape[-2]
 
-    print("x0.shape:", x0.shape)
-    print("x1.shape:", x1.shape)
-    x0, x1 = x0.cpu().numpy(), x1.cpu().numpy()
-
-    rs0, rs1 = np.linalg.norm(x0, axis=-1), np.linalg.norm(x1, axis=-1)
-    n = rs0.shape[-1]
-    hist0, bin_edges0 = np.histogram(rs0, bins=bins, range=(0.0, rmax), density=True)
-    hist1, bin_edges1 = np.histogram(rs1, bins=bins, range=(0.0, rmax), density=True)
-    bin_centers0 = (bin_edges0[:-1] + bin_edges0[1:])/2
-    bin_centers1 = (bin_edges1[:-1] + bin_edges1[1:])/2
-
-    plt.plot(bin_centers0, n * hist0, label="no interaction")
-    plt.plot(bin_centers1, n * hist1, label="flow")
-    plt.xlabel("$r$")
-    plt.ylabel(r"$2 \pi r \rho(r)$")
-    plt.legend()
-    plt.tight_layout()
-    if savefig: plt.savefig(savedir + "density1.pdf")
-    plt.show()
-
-    plt.plot(bin_centers0, n * hist0 / (2 * np.pi * bin_centers0), label="no interaction")
-    plt.plot(bin_centers1, n * hist1 / (2 * np.pi * bin_centers1), label="flow")
-    plt.xlabel("$r$")
-    plt.ylabel(r"$\rho(r)$")
-    plt.legend()
-    plt.tight_layout()
-    if savefig: plt.savefig(savedir + "density2.pdf")
-    plt.show()
-
-    xs, ys = x1[..., 0].flatten(), x1[..., 1].flatten()
+    # Plot density in the 2D x-y plane.
+    xs, ys = x[..., 0].flatten(), x[..., 1].flatten()
     H, xedges, yedges = np.histogram2d(xs, ys, bins=2*bins, range=((-rmax, rmax), (-rmax, rmax)),
                 density=True)
     plt.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
                 cmap="inferno", vmin=0, vmax=0.7)
+    plt.tight_layout()
     if savefig: plt.savefig(savedir + "density2D.pdf")
     plt.show()
+
+def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
+                   nframes=100, savefig=False, savedir=None):
+    import matplotlib.animation as animation
+    # Load or sample from scratch the electron coordinates.
+    filename = loaddir + "coordinates_flow_nframes_%d_batch_%d.npy" % (nframes, batch*times)
+    if os.path.exists(filename):
+        print("Load coordinates file: %s" % filename)
+        x = np.load(filename)
+    else:
+        print("Sample the coordinates from scratch...")
+        for i in range(times):
+            _, x_new = model.sample((batch,), nframes=nframes)
+            x_new = x_new.detach().cpu().numpy()
+            print(i+1, "x_new.shape:", x_new.shape)
+            x = x_new if i==0 else np.concatenate((x, x_new), axis=1)
+        print("x.shape:", x.shape)
+        np.save(filename, x)
+        print("Coordinates saved to file: %s" % filename)
+
+    n = x.shape[-2]
+
+    # Plot density in the 2D x-y plane and construct animation by combining all the frames.
+    fig, ax = plt.subplots()
+    def update(t):
+        print("frame %d" % t)
+        xt, yt = x[t, ..., 0].flatten(), x[t, ..., 1].flatten()
+        H, xedges, yedges = np.histogram2d(xt, yt, bins=2*bins, range=((-rmax, rmax), (-rmax, rmax)),
+                    density=True)
+        ax.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
+                    cmap="inferno", vmin=0, vmax=0.7)
+        plt.tight_layout()
+    ani = animation.FuncAnimation(fig, update, frames=nframes, interval=50)
+    if savefig: ani.save(savedir + "density2D.gif", writer='imagemagick')

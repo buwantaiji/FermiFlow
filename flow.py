@@ -39,8 +39,13 @@ class CNF(torch.nn.Module):
         self.t_span = t_span
         self.t_span_reverse = t_span[1], t_span[0]
 
-    def generate(self, z):
-        x = solve_ivp_nnmodule(self.v_wrapper, self.t_span, z, params_require_grad=False)
+    def generate(self, z, nframes=None):
+        if nframes is None:
+            x = solve_ivp_nnmodule(self.v_wrapper, self.t_span, z, params_require_grad=False)
+        else:
+            from torchdiffeq import odeint
+            t = torch.linspace(*self.t_span, steps=nframes, device=z.device)
+            x = odeint(self.v_wrapper, z, t)
         return x
 
     def delta_logp(self, x, params_require_grad=False):

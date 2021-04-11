@@ -86,7 +86,7 @@ if __name__ == "__main__":
                "nup_%d_ndown_%d_" % (args.nup, args.ndown) + \
                "deltaE_%.1f_" % args.deltaE + \
               ("boltzmann_" if args.boltzmann else "") + \
-              ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
+              ("cuda_%d_" % 1 if device.type == "cuda" else "cpu_") + \
                "Deta_%d_" % args.Deta + \
                "Dmu_%s_" % (args.Dmu if not args.nomu else None) + \
                "T0_%.1f_T1_%.1f_" % t_span + \
@@ -100,7 +100,8 @@ if __name__ == "__main__":
     # Load the model and optimizer states from a checkpoint file, if any.
     if os.path.exists(checkpoint):
         print("Load checkpoint file: %s" % checkpoint)
-        states = torch.load(checkpoint, map_location={'cuda:1':'cuda:0'})
+        #states = torch.load(checkpoint)
+        states = torch.load(checkpoint, map_location=torch.device("cuda:0"))
         model.load_state_dict(states["nn_state_dict"])
         optimizer.load_state_dict(states["optimizer_state_dict"])
         Fs = states["Fs"]
@@ -133,12 +134,16 @@ if __name__ == "__main__":
         #S_flow = None
 
         #plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
-                        #savefig=True, savedir=savedir)
+                        #savefig=False, savedir=savedir)
 
         #plot_backflow_potential(model, device, savefig=False, savedir=savedir)
 
         density_batch = 200000
-        plot_density(model, density_batch, times=10, bins=500, savefig=True, savedir=savedir)
+        plot_density2D(model, density_batch, checkpoint_dir, times=10, bins=500,
+                     savefig=False, savedir=savedir)
+        #density_animation_batch = 10000
+        #plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
+                     #times=200, bins=500, savefig=True, savedir=savedir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 
