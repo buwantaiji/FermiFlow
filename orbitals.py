@@ -34,21 +34,22 @@ class HO2D(Orbitals):
 
         pi_sqrt_inverse = 1. / np.sqrt(np.pi)
         orbitals_1d = [
-            lambda x: 1, 
-            lambda x: np.sqrt(2) * x, 
-            lambda x: 1 / np.sqrt(2) * (2*x**2 - 1), 
-            lambda x: 1 / np.sqrt(3) * (2*x**3 - 3*x), 
-            lambda x: 1 / np.sqrt(6) * (2*x**4 - 6*x**2 + 1.5), 
-            lambda x: 1 / np.sqrt(15) * (2*x**5 - 10*x**3 + 7.5*x), 
+            lambda x: 1,
+            lambda x: np.sqrt(2) * x,
+            lambda x: 1 / np.sqrt(2) * (2*x**2 - 1),
+            lambda x: 1 / np.sqrt(3) * (2*x**3 - 3*x),
+            lambda x: 1 / np.sqrt(6) * (2*x**4 - 6*x**2 + 1.5),
+            lambda x: 1 / np.sqrt(15) * (2*x**5 - 10*x**3 + 7.5*x),
             lambda x: 1 / np.sqrt(5) * (2/3*x**6 - 5*x**4 + 7.5*x**2 - 1.25),
+            lambda x: 1 / np.sqrt(70) * (4/3*x**7 - 14*x**5 + 35*x**3 - 17.5*x),
             ]
         orbital_2d = lambda nx, ny: lambda x: \
                         pi_sqrt_inverse * torch.exp(- 0.5 * (x**2).sum(dim=-1)) \
                         * orbitals_1d[nx](x[..., 0]) \
                         * orbitals_1d[ny](x[..., 1])
 
-        self.orbitals = [orbital_2d(nx, n - nx) for n in range(7) for nx in range(n + 1)]
-        self.Es = [n + 1 for n in range(7) for nx in range(n + 1)]
+        self.orbitals = [orbital_2d(nx, n - nx) for n in range(8) for nx in range(n + 1)]
+        self.Es = [n + 1 for n in range(8) for nx in range(n + 1)]
         self.E_indices = lambda n: tuple(range(n*(n+1)//2, (n+1)*(n+2)//2))
 
     def fermion_states_random(self, n):
@@ -79,7 +80,7 @@ class HO2D(Orbitals):
 if __name__ == "__main__":
     ho2d = HO2D()
     Ns = (3, 4, 6, 10)
-    deltaEs_max = (2, 2, 4, 2)
+    deltaEs_max = (2, 2, 4, 4)
     for N, deltaE_max in zip(Ns, deltaEs_max):
         print("---- N = %d ----" % N)
         for deltaE in range(deltaE_max + 1):

@@ -174,11 +174,14 @@ def plot_density2D(model, batch, loaddir, times=1, rmax=5.0, bins=500,
 
     # Plot density in the 2D x-y plane.
     xs, ys = x[..., 0].flatten(), x[..., 1].flatten()
+    fig, ax = plt.subplots(figsize=(5, 5))
     H, xedges, yedges = np.histogram2d(xs, ys, bins=2*bins, range=((-rmax, rmax), (-rmax, rmax)),
                 density=True)
-    plt.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
+    ax.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
                 cmap="inferno", vmin=0, vmax=0.7)
-    plt.tight_layout()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    fig.tight_layout()
     if savefig: plt.savefig(savedir + "density2D.pdf")
     plt.show()
 
@@ -204,7 +207,7 @@ def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
     n = x.shape[-2]
 
     # Plot density in the 2D x-y plane and construct animation by combining all the frames.
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, 5))
     def update(t):
         print("frame %d" % t)
         xt, yt = x[t, ..., 0].flatten(), x[t, ..., 1].flatten()
@@ -212,6 +215,8 @@ def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
                     density=True)
         ax.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
                     cmap="inferno", vmin=0, vmax=0.7)
-        plt.tight_layout()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        fig.tight_layout()
     ani = animation.FuncAnimation(fig, update, frames=nframes, interval=50)
     if savefig: ani.save(savedir + "density2D.gif", writer='imagemagick')
