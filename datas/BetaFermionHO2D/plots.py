@@ -152,16 +152,16 @@ if __name__ == "__main__":
     Z = 0.5
     nup, ndown = 6, 0
     betas = (2.0, 2.5, 3.0, 4.0, 5.0, 6.0)
-    cudas = (1, 2, 3, 4, 5, 6)
+    cudas = (7, 6, 4, 3, 2, 0)
 
     deltaE = 4.0
-    boltzmann = False
+    boltzmann = True
     Deta = 50
     nomu = False
     Dmu = 50
     t0, t1 = 0., 1.
     batch = 8000
-    baseiter = 1000
+    baseiter = 3000
 
     """
     fig_entropy_iterations = plt.figure()

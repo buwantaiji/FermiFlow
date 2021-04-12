@@ -17,17 +17,17 @@ for filename in files:
 
 # Energy data of the present work.
 data = {}
-deltaEs = [2, 3, 4]
+deltaEs = [4]
 print("==== data of the present work ====")
 for deltaE in deltaEs:
-    filename = "sumup_Z_0.5_nup_6_ndown_0_deltaE_%.1f_Deta_50_Dmu_50_T0_0.0_T1_1.0_batch_8000.txt" % deltaE
+    filename = "sumup_Z_0.5_nup_6_ndown_0_deltaE_%.1f_boltzmann_Deta_50_Dmu_50_T0_0.0_T1_1.0_batch_8000.txt" % deltaE
     beta, F, F_error, E, E_error, S, S_analytical = np.loadtxt(filename, unpack=True)
     data[deltaE] = {"beta": beta, "F": F, "F_error": F_error, "E": E, "E_error": E_error,
                     "S": S, "S_analytical": S_analytical}
     print("---- deltaE = %.1f ----" % deltaE)
     print("beta:", beta, "\nE:", E, "\nE_error:", E_error)
 beta_inf = 10.0
-data["inf"] = {"E": 18.19107329214244}
+data["inf"] = {"E": 18.181598714718717, "E_error": 0.3591216807094323}
 
 
 # Plot the energy data.
@@ -43,11 +43,12 @@ for filename, label, marker, color in zip(files[indices], labels[indices], marke
                 marker=marker, markerfacecolor="None", label=label)
 deltaE = 4
 beta_new, E, E_error = data[deltaE]["beta"], data[deltaE]["E"], data[deltaE]["E_error"]
-ax.errorbar(beta_new, E, yerr=E_error/np.sqrt(8000), linestyle="None", capsize=7,
-            marker="o", color="red", label="FermiFlow")
+ax.errorbar(beta_new, E, yerr=E_error/np.sqrt(8000),
+            linestyle="None", capsize=7, marker="o", color="red", label="FermiFlow")
 ax.set_xlim(right=beta_new[-1] + 0.5)
 
-ax_inf.plot(beta_inf, data["inf"]["E"], linestyle="None", marker="o", color="red")
+ax_inf.errorbar(beta_inf, data["inf"]["E"], yerr=data["inf"]["E_error"]/np.sqrt(8000),
+            linestyle="None", capsize=7, marker="o", color="red")
 ax_inf.set_xlim(beta_inf - 1, beta_inf + 0.2)
 ax_inf.set_xticks((beta_inf,))
 ax_inf.set_xticklabels(("$\infty$",))
@@ -59,7 +60,7 @@ fig.legend(loc=(0.65, 0.65))
 
 ax.set_xlabel('.', color=(0, 0, 0, 0))
 ax.set_ylabel('.', color=(0, 0, 0, 0))
-fig.text(0.53, 0.04, r"$\beta$", va='center', ha='center', fontsize=mpl.rcParams['axes.labelsize'])
+fig.text(0.55, 0.04, r"$\beta$", va='center', ha='center', fontsize=mpl.rcParams['axes.labelsize'])
 fig.text(0.04, 0.56, "$E$", va='center', ha='center', rotation='vertical', fontsize=mpl.rcParams['axes.labelsize'])
 
 dx, dy = .015, .04
