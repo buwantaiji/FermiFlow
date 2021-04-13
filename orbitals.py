@@ -5,9 +5,35 @@ import numpy as np
 class Orbitals(object):
     def __init__(self):
         pass
+
     def boson_states(self, n):
         pass
-    def fermion_states(self, nup, ndown):
+
+    def fermion_states_random(self, n):
+        import random
+        orbitals, Es = zip( *random.sample(tuple(zip(self.orbitals, self.Es)), k=n) )
+        return orbitals, Es
+
+    def subsets(self, k, Pmax, Ps):
+        """
+            Given a set of several items with "prices" specified by the list Ps, find
+        all subsets of length k whose total price do not exceed Pmax.
+        """
+        Nelements = len(Ps)
+        result = ( ((), 0), )
+        for i in range(1, k+1):
+            result_new = []
+            for subset, Ptotal in result:
+                next_idx = subset[-1] + 1 if subset else 0
+                while (next_idx + k - i < Nelements):
+                    if sum(Ps[next_idx:next_idx+k-i+1]) <= Pmax - Ptotal:
+                        result_new.append( (subset + (next_idx,), Ptotal + Ps[next_idx]) )
+                    next_idx += 1
+            result = tuple(result_new)
+        indices, Ptotals = zip( *sorted(result, key=lambda index_P: index_P[1]) )
+        return indices, Ptotals
+
+    def fermion_states(self, nup, ndown, deltaE):
         """
             This function computes (a subset of) the low-lying eigenstates of the 
         non-interacting Fermion system, i.e., Slater determinants, under specific 
@@ -21,7 +47,14 @@ class Orbitals(object):
             Note that due to Pauli exclusion principle, the nup(ndown) orbitals within
         orbitals_up(orbitals_down) are all different.
         """
-        pass
+        if ndown != 0:
+            raise ValueError("Only the polarized case (i.e., ndown = 0) is allowed "
+                    "in the present implementation.")
+        E0 = sum(self.Es[:nup])
+        indices, Es = self.subsets(nup, E0 + deltaE, self.Es)
+        states = tuple( (tuple(self.orbitals[idx] for idx in index_subset), ())
+                        for index_subset in indices)
+        return states, Es
 
 class HO2D(Orbitals):
     """
@@ -52,21 +85,12 @@ class HO2D(Orbitals):
         self.Es = [n + 1 for n in range(8) for nx in range(n + 1)]
         self.E_indices = lambda n: tuple(range(n*(n+1)//2, (n+1)*(n+2)//2))
 
-    def fermion_states_random(self, n):
-        import random
-        orbitals, Es = zip( *random.sample(tuple(zip(self.orbitals, self.Es)), k=n) )
-        return orbitals, Es
-
-    def fermion_states(self, nup, ndown, deltaE):
+    def fermion_states_naive(self, nup, ndown, deltaE):
+        """
+            A naive implementation of computing all the non-interacting many-body
+        basis states of fermions, by exhaustive search of all possible combinations.
+        """
         import itertools
-
-        if not (nup <= 10 and ndown == 0):
-            raise ValueError("HO2D.fermion_states: nup must be <= 10 and ndown must be 0 "
-                    "in the present implementation.")
-        if deltaE > 4:
-            raise ValueError("HO2D.fermion_states: the maximum excitation energy "
-                    "deltaE of the states is allowed to be at most 4 in the "
-                    "present implementation.")
 
         states = [(state, E) 
             for state, E in zip(itertools.combinations(self.orbitals, nup), 
@@ -77,7 +101,22 @@ class HO2D(Orbitals):
         Es = tuple(sum(E) for E in Es)
         return states, Es
 
+class Free3D(Orbitals):
+    """
+        The orbitals of a free particle confined in a 3-dimensional cubic box.
+    """
+    def __init__(self):
+        super(Free3D, self).__init__()
+        self.Es = []
+        for nx in range(-8, 9):
+            for ny in range(-8, 9):
+                for nz in range(-8, 9):
+                    E = nx**2 + ny**2 + nz**2
+                    if E <= 60: self.Es.append(E)
+        self.Es = sorted(self.Es)
+
 if __name__ == "__main__":
+    """
     ho2d = HO2D()
     Ns = (3, 4, 6, 10)
     deltaEs_max = (2, 2, 4, 4)
@@ -87,3 +126,12 @@ if __name__ == "__main__":
             states, Es = ho2d.fermion_states(N, 0, deltaE)
             print("deltaE =", deltaE, "Number of states:", len(states))
             print("State energies:", Es)
+    """
+    free3d = Free3D()
+    N, deltaE_max = 33, 4
+    print("The energy of first %d single-particle orbitals:" % N, free3d.Es[:N])
+    print("---- N = %d ----" % N)
+    for deltaE in range(deltaE_max + 1):
+        E0 = sum(free3d.Es[:N])
+        indices, Es = free3d.subsets(N, E0 + deltaE, free3d.Es)
+        print("deltaE =", deltaE, "Number of states:", len(indices))

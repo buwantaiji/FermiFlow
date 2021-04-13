@@ -79,7 +79,7 @@ if __name__ == "__main__":
     exit(111)
     """
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
     checkpoint_prefix = "/data1/xieh/FlowVMC/master/BetaFermionHO2D/"
     data_dir = "beta_%.1f_" % args.beta + \
