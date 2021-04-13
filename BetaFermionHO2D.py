@@ -61,6 +61,7 @@ if __name__ == "__main__":
 
     model = BetaVMC(args.beta, args.nup, args.ndown, args.deltaE, args.boltzmann,
                     orbitals, basedist, cnf, pair_potential, sp_potential=sp_potential)
+    model.to(device=device)
 
     print("beta = %.1f, nup = %d, ndown = %d, Z = %.1f" % (args.beta, args.nup, args.ndown, args.Z))
     print("deltaE = %.1f, total number of states = %d" % (args.deltaE, model.Nstates))
@@ -118,7 +119,6 @@ if __name__ == "__main__":
         Es_std = torch.empty(0, device=device)
         Ss = torch.empty(0, device=device)
         Ss_analytical = torch.empty(0, device=device)
-    model.to(device=device)
     #model.to(device=torch.device("cuda:0"))
     # ==============================================================================
 

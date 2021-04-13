@@ -75,5 +75,5 @@ ax_inf.plot(4*x, 1 + y, **kwargs)
 
 plt.tight_layout()
 plt.subplots_adjust(wspace=0.05)
-#fig.savefig("energy_data.pdf")
+#fig.savefig("energy_data1.pdf")
 plt.show()
