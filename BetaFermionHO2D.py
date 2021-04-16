@@ -102,7 +102,7 @@ if __name__ == "__main__":
     if os.path.exists(checkpoint):
         print("Load checkpoint file: %s" % checkpoint)
         states = torch.load(checkpoint)
-        #states = torch.load(checkpoint, map_location=torch.device("cuda:0"))
+        #states = torch.load(checkpoint, map_location=torch.device("cuda:1"))
         model.load_state_dict(states["nn_state_dict"])
         optimizer.load_state_dict(states["optimizer_state_dict"])
         Fs = states["Fs"]
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         Es_std = torch.empty(0, device=device)
         Ss = torch.empty(0, device=device)
         Ss_analytical = torch.empty(0, device=device)
-    #model.to(device=torch.device("cuda:0"))
+    #model.to(device=torch.device("cuda:1"))
     # ==============================================================================
 
     if args.analyze:
@@ -131,19 +131,19 @@ if __name__ == "__main__":
         #energylevels_batch = 8000
         #S_flow = plot_energylevels(model, energylevels_batch, device,
                     #checkpoint_dir, savedir, savefig=True)
-        S_flow = None
+        #S_flow = None
 
-        plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
-                        savefig=False, savedir=savedir)
+        #plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
+                        #savefig=False, savedir=savedir)
 
-        plot_backflow_potential(model, device, savefig=False, savedir=savedir)
+        #plot_backflow_potential(model, device, savefig=False, savedir=savedir)
 
         #density_batch = 200000
         #plot_density2D(model, density_batch, checkpoint_dir, times=10, bins=500,
                      #savefig=False, savedir=savedir)
-        #density_animation_batch = 10000
-        #plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
-                     #times=200, bins=500, savefig=True, savedir=savedir)
+        density_animation_batch = 10000
+        plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
+                     times=200, bins=500, savefig=False, savedir=savedir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 
