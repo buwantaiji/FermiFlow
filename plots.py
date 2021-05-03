@@ -242,3 +242,70 @@ def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
             fig.tight_layout()
         ani = animation.FuncAnimation(fig, update, frames=nframes, interval=50)
         if savefig: ani.save(savedir + "density2D.gif", writer='imagemagick', dpi=150)
+
+def plot_nodalsurface(model, device, loaddir, rmax=5.0, bins=500,
+                   savefig=False, savedir=None):
+    filename = loaddir + "coordinates_remaining_particles.npy"
+    if os.path.exists(filename):
+        print("Load coordinates file: %s" % filename)
+        x_remaining = np.load(filename)
+        print("x_remaining.shape:", x_remaining.shape)
+    else:
+        print("Sample the coordinates from scratch...")
+        _, x = model.sample((1,))
+        x_remaining = x[0, 1:, :].detach().cpu().numpy()
+        print("x_remaining.shape:", x_remaining.shape)
+        #np.save(filename, x_remaining)
+        #print("Coordinates saved to file: %s" % filename)
+
+    x = np.empty((bins*bins, x_remaining.shape[0] + 1, x_remaining.shape[1]))
+    mesh1d = np.linspace(-rmax, rmax, num=bins)
+    meshx, meshy = np.meshgrid(mesh1d, mesh1d)
+    x[:, 0, 0], x[:, 0, 1] = meshx.reshape(-1), meshy.reshape(-1)
+    x[:, 1:, :] = x_remaining
+    x = torch.from_numpy(x).to(device=device)
+    print("x.shape:", x.shape)
+
+    from NeuralODE.nnModule import solve_ivp_nnmodule
+    z = solve_ivp_nnmodule(model.cnf.v_wrapper, model.cnf.t_span_reverse, x, params_require_grad=False)
+
+    def logabsslaterdet(orbitals, x):
+        """
+            The "straight-forward" version of LogAbsSlaterDet, where the backward is
+        taken care of automatically by the torch.slogdet function.
+        """
+        *batch, n, _ = x.shape
+        D = torch.empty(*batch, n, n, device=x.device)
+        for i in range(n):
+            D[..., i] = orbitals[i](x)
+        sign, logabsdet = D.slogdet()
+        return sign, logabsdet
+
+    from orbitals import HO2D
+    n = x.shape[-2]
+    orbitals = HO2D()
+    sign, _ = logabsslaterdet(orbitals.orbitals[:n], z)
+    sign = sign.reshape(bins, bins).detach().cpu().numpy()
+    sign_noninteraction, _ = logabsslaterdet(orbitals.orbitals[:n], x)
+    sign_noninteraction = sign_noninteraction.reshape(bins, bins).detach().cpu().numpy()
+
+    fig, (ax_noninteraction, ax) = plt.subplots(1, 2, figsize=(10, 5))
+
+    ax_noninteraction.imshow(sign_noninteraction, extent=(-rmax, rmax, -rmax, rmax), cmap="Spectral")
+    ax_noninteraction.set_xticks([])
+    ax_noninteraction.set_yticks([])
+    ax_noninteraction.set_title("no interaction")
+    for coords_x, coords_y in x_remaining:
+        ax_noninteraction.scatter(coords_x, -coords_y, c="green")
+
+    ax.imshow(sign, extent=(-rmax, rmax, -rmax, rmax), cmap="Spectral")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title("backflow")
+    for coords_x, coords_y in x_remaining:
+        ax.scatter(coords_x, -coords_y, c="green")
+
+    fig.tight_layout()
+    plt.subplots_adjust(wspace=0)
+    if savefig: plt.savefig(savedir + "nodalsurface.pdf")
+    plt.show()

@@ -141,13 +141,15 @@ if __name__ == "__main__":
         #density_batch = 200000
         #plot_density2D(model, density_batch, checkpoint_dir, times=10, bins=500,
                      #savefig=False, savedir=savedir)
-        density_animation_batch = 10000
-        nframes = 100
+
+        #density_animation_batch = 10000
+        #nframes = 100
         #snapshots = (0, 19, 39, 59, 79, 99)
-        snapshots = (0, 12, 24, 36, 49, 61, 74, 86, 99)
-        plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
-                     times=200, bins=500, plot_animation=False, nframes=nframes,
-                     snapshots=snapshots, savefig=True, savedir=savedir)
+        #snapshots = (0, 12, 24, 36, 49, 61, 74, 86, 99)
+        #plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
+                     #times=200, bins=500, plot_animation=False, nframes=nframes,
+                     #snapshots=snapshots, savefig=True, savedir=savedir)
+        plot_nodalsurface(model, device, checkpoint_dir, savefig=False, savedir=savedir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 
