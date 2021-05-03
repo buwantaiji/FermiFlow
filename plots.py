@@ -186,7 +186,7 @@ def plot_density2D(model, batch, loaddir, times=1, rmax=5.0, bins=500,
     plt.show()
 
 def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
-                   nframes=100, plot_animation=False, snapshots=(0, 19, 39, 59, 79, 99),
+                   plot_animation=False, nframes=100, snapshots=None,
                    savefig=False, savedir=None):
     """ Plot density in the 2D x-y plane. """
 
@@ -209,6 +209,23 @@ def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
 
     n = x.shape[-2]
 
+    if snapshots is not None:
+        # Arrange several density snapshots in a row.
+        nsnapshots = len(snapshots)
+        fig_snapshots, axes = plt.subplots(1, nsnapshots, figsize=(3*nsnapshots, 3))
+        for ax, t in zip(axes, snapshots):
+            print("frame %d" % t)
+            xt, yt = x[t, ..., 0].flatten(), x[t, ..., 1].flatten()
+            H, xedges, yedges = np.histogram2d(xt, yt, bins=2*bins, range=((-rmax, rmax), (-rmax, rmax)),
+                        density=True)
+            ax.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
+                        cmap="inferno", vmin=0, vmax=0.7)
+            ax.set_xticks([])
+            ax.set_yticks([])
+        fig_snapshots.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0)
+        if savefig: fig_snapshots.savefig(savedir + "density2D_snapshots.pdf", dpi=150)
+        plt.show()
+
     if plot_animation:
         # Construct animation by combining all the frames.
         import matplotlib.animation as animation
@@ -224,21 +241,4 @@ def plot_density2D_animation(model, batch, loaddir, times=1, rmax=5.0, bins=500,
             ax.set_yticks([])
             fig.tight_layout()
         ani = animation.FuncAnimation(fig, update, frames=nframes, interval=50)
-        if savefig: ani.save(savedir + "density2D.gif", writer='imagemagick')
-
-    if snapshots is not None:
-        # Arrange several density snapshots in a row.
-        nsnapshots = len(snapshots)
-        fig, axes = plt.subplots(1, nsnapshots, figsize=(3*nsnapshots, 3))
-        for ax, t in zip(axes, snapshots):
-            print("frame %d" % t)
-            xt, yt = x[t, ..., 0].flatten(), x[t, ..., 1].flatten()
-            H, xedges, yedges = np.histogram2d(xt, yt, bins=2*bins, range=((-rmax, rmax), (-rmax, rmax)),
-                        density=True)
-            ax.imshow(n * H, interpolation="nearest", extent=(xedges[0], xedges[-1], yedges[0], yedges[-1]),
-                        cmap="inferno", vmin=0, vmax=0.7)
-            ax.set_xticks([])
-            ax.set_yticks([])
-        fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0)
-        if savefig: plt.savefig(savedir + "density2D_snapshots.pdf")
-        plt.show()
+        if savefig: ani.save(savedir + "density2D.gif", writer='imagemagick', dpi=150)

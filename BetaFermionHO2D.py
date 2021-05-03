@@ -102,7 +102,7 @@ if __name__ == "__main__":
     if os.path.exists(checkpoint):
         print("Load checkpoint file: %s" % checkpoint)
         states = torch.load(checkpoint)
-        #states = torch.load(checkpoint, map_location=torch.device("cuda:1"))
+        #states = torch.load(checkpoint, map_location=torch.device("cuda:0"))
         model.load_state_dict(states["nn_state_dict"])
         optimizer.load_state_dict(states["optimizer_state_dict"])
         Fs = states["Fs"]
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         Es_std = torch.empty(0, device=device)
         Ss = torch.empty(0, device=device)
         Ss_analytical = torch.empty(0, device=device)
-    #model.to(device=torch.device("cuda:1"))
+    #model.to(device=torch.device("cuda:0"))
     # ==============================================================================
 
     if args.analyze:
@@ -142,8 +142,12 @@ if __name__ == "__main__":
         #plot_density2D(model, density_batch, checkpoint_dir, times=10, bins=500,
                      #savefig=False, savedir=savedir)
         density_animation_batch = 10000
+        nframes = 100
+        #snapshots = (0, 19, 39, 59, 79, 99)
+        snapshots = (0, 12, 24, 36, 49, 61, 74, 86, 99)
         plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
-                     times=200, bins=500, savefig=False, savedir=savedir)
+                     times=200, bins=500, plot_animation=False, nframes=nframes,
+                     snapshots=snapshots, savefig=True, savedir=savedir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 
