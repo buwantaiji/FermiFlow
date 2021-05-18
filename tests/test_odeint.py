@@ -5,6 +5,7 @@
 import torch
 torch.set_default_dtype(torch.float64)
 from torchdiffeq import odeint
+import pytest
 
 def test_odeint_1():
 
@@ -55,6 +56,7 @@ def test_odeint_2():
     assert torch.allclose(x1t, x1t_analytic)
     assert torch.allclose(x2t, x2t_analytic)
 
+@pytest.mark.skip(reason="The run time is too long.")
 def test_odeint_cnf():
     from MLP import MLP
     from equivariant_funs import Backflow
