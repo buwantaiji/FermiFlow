@@ -1,0 +1,15 @@
+language: python
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+# command to install dependencies
+install:
+  - pip3 install torch==1.8.1+cpu torchvision==0.9.1+cpu torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html
+  - pip install torchdiffeq
+  - pip install -r requirements.txt
+before_script:
+  - export PYTHONPATH="/home/travis/build/buwantaiji/FermiFlow"
+# command to run tests
+script:
+  - pytest
