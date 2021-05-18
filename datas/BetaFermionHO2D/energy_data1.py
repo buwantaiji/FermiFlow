@@ -4,7 +4,8 @@ import matplotlib as mpl
 
 # Energy data of the paper: J. Chem. Phys. 153, 234104 (2020).
 files = np.array(["PRE", "PBPIMC", "eta0.1", "eta0.2", "eta0", "extrapolated"])
-labels = np.array(["PRE", "PBPIMC", "$\eta = 0.1$", "$\eta = 0.2$", "$\eta = 0$", "extrapolated"])
+#labels = np.array(["PRE", "PBPIMC", "$\eta = 0.1$", "$\eta = 0.2$", "$\eta = 0$", "extrapolated"])
+labels = np.array(["PRE", "Ref. [65]", "$\eta = 0.1$", "$\eta = 0.2$", "$\eta = 0$", "Ref. [66]"])
 data_jcp = {}
 print("==== data of the jcp paper ====")
 for filename in files:
@@ -44,7 +45,7 @@ for filename, label, marker, color in zip(files[indices], labels[indices], marke
 deltaE = 4
 beta_new, E, E_error = data[deltaE]["beta"], data[deltaE]["E"], data[deltaE]["E_error"]
 ax.errorbar(beta_new, E, yerr=E_error/np.sqrt(8000),
-            linestyle="None", capsize=7, marker="o", color="red", label="FermiFlow")
+            linestyle="None", capsize=7, marker="o", color="red", label="Present work")
 ax.set_xlim(right=beta_new[-1] + 0.5)
 
 ax_inf.errorbar(beta_inf, data["inf"]["E"], yerr=data["inf"]["E_error"]/np.sqrt(8000),
@@ -76,4 +77,5 @@ ax_inf.plot(4*x, 1 + y, **kwargs)
 plt.tight_layout()
 plt.subplots_adjust(wspace=0.05)
 #fig.savefig("energy_data1.pdf")
+fig.savefig("energy_data1_fixed.pdf")
 plt.show()

@@ -131,12 +131,12 @@ if __name__ == "__main__":
         #energylevels_batch = 8000
         #S_flow = plot_energylevels(model, energylevels_batch, device,
                     #checkpoint_dir, savedir, savefig=True)
-        #S_flow = None
+        S_flow = None
 
-        #plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
-                        #savefig=False, savedir=savedir)
+        plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical, S_flow,
+                        savefig=False, savedir=savedir)
 
-        #plot_backflow_potential(model, device, savefig=False, savedir=savedir)
+        plot_backflow_potential(model, device, savefig=False, savedir=savedir)
 
         #density_batch = 200000
         #plot_density2D(model, density_batch, checkpoint_dir, times=10, bins=500,
@@ -149,7 +149,8 @@ if __name__ == "__main__":
         #plot_density2D_animation(model, density_animation_batch, checkpoint_dir,
                      #times=200, bins=500, plot_animation=False, nframes=nframes,
                      #snapshots=snapshots, savefig=True, savedir=savedir)
-        plot_nodalsurface(model, device, checkpoint_dir, savefig=False, savedir=savedir)
+
+        #plot_nodalsurface(model, device, checkpoint_dir, savefig=False, savedir=savedir)
     else:
         print("Compute new iterations. batch = %d, iternum = %d." % (args.batch, args.iternum))
 

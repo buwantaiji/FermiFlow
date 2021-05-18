@@ -15,7 +15,7 @@ from VMC import BetaVMC
 def load_model(beta, nup, ndown, Z,
         deltaE, cuda, Deta, nomu, Dmu, t0, t1, boltzmann,
         baseiter, batch):
-    device = torch.device("cuda:%d" % cuda)
+    device = torch.device("cuda:%d" % 0)
     orbitals = HO2D()
     basedist = FreeFermion(device=device)
 
@@ -47,7 +47,7 @@ def load_model(beta, nup, ndown, Z,
             "nup_%d_ndown_%d_" % (nup, ndown) + \
             "deltaE_%.1f_" % deltaE + \
            ("boltzmann_" if boltzmann else "") + \
-           ("cuda_%d_" % device.index if device.type == "cuda" else "cpu_") + \
+           ("cuda_%d_" % cuda if device.type == "cuda" else "cpu_") + \
             "Deta_%d_" % Deta + \
             "Dmu_%s_" % (Dmu if not nomu else None) + \
             "T0_%.1f_T1_%.1f_" % t_span + \
@@ -95,16 +95,16 @@ def entropy_from_flow(beta, batch, checkpoint_dir):
     else:
         raise ValueError("Energy level data file does not exist: %s" % filename)
 
-def plot_backflow_potential(model, cuda, ax_eta, ax_mu, color, Z, r_max=10.0):
+def plot_backflow_potential(model, cuda, ax_eta, ax_mu, color, label, r_max=10.0):
     cuda = 0
     eta, mu = model.cnf.backflow_potential()
     r = np.linspace(0., r_max, num=int(r_max * 100))
     device = torch.device("cuda:%d" % cuda)
     eta_r = eta( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-    ax_eta.plot(r, eta_r, color=color, label="$\kappa = %.1f$" % Z)
+    ax_eta.plot(r, eta_r, color=color, label=label)
     if mu is not None:
         mu_r = mu( torch.from_numpy(r).to(device=device)[:, None] )[:, 0].detach().cpu().numpy()
-        ax_mu.plot(r, mu_r, color=color, label="$\kappa = %.1f$" % Z)
+        ax_mu.plot(r, mu_r, color=color, label=label)
 
 def plot_density(ax1, ax2, x, label, rmax=5.0, bins=300):
     x = x.cpu().numpy()
@@ -143,11 +143,11 @@ if __name__ == "__main__":
     #cudas = (1, 2, 3, 4, 5, 6, 1, 2)
     #plot_indices = (0, 2, 4, 5, 6, 7)
 
-    beta = 6.0
-    nup, ndown = 10, 0
-    Zs = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
-    cudas = (0, 1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 1)
-    plot_indices = (0, 5, 6, 8, 10, 12)
+    #beta = 6.0
+    #nup, ndown = 10, 0
+    #Zs = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+    #cudas = (0, 1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 1)
+    #plot_indices = (0, 5, 6, 8, 10, 12)
 
     #################################################################
     # Fix Z, vary beta
@@ -157,7 +157,13 @@ if __name__ == "__main__":
     #betas = (2.0, 2.5, 3.0, 4.0, 5.0, 6.0)
     #cudas = (7, 6, 4, 3, 2, 0)
 
-    deltaE = 2.0
+    Z = 4.0
+    nup, ndown = 10, 0
+    betas = (6.0, 5.0, 4.0, 3.0, 2.5)
+    cudas = (0, 2, 3, 4, 6)
+    plot_indices = (0, 1, 2, 3, 4)
+
+    deltaE = 4.0
     boltzmann = True
     Deta = 50
     nomu = False
@@ -177,8 +183,8 @@ if __name__ == "__main__":
     thermo_quantities = []
     energylevels_batch = 8000
     density_batch = 200000
-    for idx, (Z, cuda) in enumerate(zip(Zs, cudas)):
-    #for idx, (beta, cuda) in enumerate(zip(betas, cudas)):
+    #for idx, (Z, cuda) in enumerate(zip(Zs, cudas)):
+    for idx, (beta, cuda) in enumerate(zip(betas, cudas)):
         model, states, checkpoint_dir = load_model(beta, nup, ndown, Z,
                 deltaE, cuda, Deta, nomu, Dmu, t0, t1, boltzmann, baseiter, batch)
         Fs, Fs_std, Es, Es_std, Ss, Ss_analytical = states["Fs"], states["Fs_std"], \
@@ -193,25 +199,27 @@ if __name__ == "__main__":
 
         if idx in plot_indices:
             plot_iterations(Fs, Fs_std, Es, Es_std, Ss, Ss_analytical,
-                    ax_entropy_iterations, "$Z = %.1f$" % Z)
+                    ax_entropy_iterations, r"$\beta = %.1f$" % beta)
 
             color = next(ax_backflow_eta._get_lines.prop_cycler)['color']
-            plot_backflow_potential(model, cuda, ax_backflow_eta, ax_backflow_mu, color, Z)
-#
-            #if idx == plot_indices[0]:
-                #old_weights = model.log_state_weights
-                #model.log_state_weights = torch.nn.Parameter(
-                        #-model.beta * (model.Es_original - model.Es_original[0]))
-                #x, _ = model.sample((density_batch,))
-                #plot_density(ax_density1, ax_density2, x, "no interaction")
-                #model.log_state_weights = old_weights
-            #_, x = model.sample((density_batch,))
-            #plot_density(ax_density1, ax_density2, x, "$Z = %.1f$" % Z)
+            plot_backflow_potential(model, cuda, ax_backflow_eta, ax_backflow_mu, color,
+                    r"$\beta = %.1f$" % beta)
+
+            if idx == plot_indices[0]:
+                old_weights = model.log_state_weights
+                model.log_state_weights = torch.nn.Parameter(
+                        -model.beta * (model.Es_original - model.Es_original[0]))
+                x, _ = model.sample((density_batch,))
+                plot_density(ax_density1, ax_density2, x, "no interaction")
+                model.log_state_weights = old_weights
+            _, x = model.sample((density_batch,))
+            plot_density(ax_density1, ax_density2, x, r"$\beta = %.1f$" % beta)
 
         model = model.cpu()
         del model, states, Fs, Fs_std, Es, Es_std, Ss, Ss_analytical
         torch.cuda.empty_cache()
 
+    """
     params_str = "beta_%.1f_" % beta + \
             "nup_%d_ndown_%d_" % (nup, ndown) + \
             "deltaE_%.1f_" % deltaE + \
@@ -231,6 +239,7 @@ if __name__ == "__main__":
             "batch_%d" % batch
     sumup_file = "sumup_%s.txt" % params_str
 
+    """
     np.savetxt(sumup_file, thermo_quantities, fmt="%18.15f",
             header="%16s %18s %18s %18s %18s %18s %18s" % thermo_quantity_labels)
     """
@@ -240,7 +249,7 @@ if __name__ == "__main__":
     ax_entropy_iterations.set_ylabel("Entropy", size=18)
     ax_entropy_iterations.legend()
     fig_entropy_iterations.tight_layout()
-    #fig_entropy_iterations.savefig("entropy_%s.pdf" % params_str)
+    fig_entropy_iterations.savefig("entropy_%s.pdf" % params_str)
 
     ax_backflow_eta.set_xlabel("$r$")
     ax_backflow_eta.set_ylabel("$\eta(r)$", size=18)
@@ -252,16 +261,16 @@ if __name__ == "__main__":
     fig_backflow.tight_layout()
     fig_backflow.savefig("backflow_%s.pdf" % params_str)
 
-    #ax_density1.set_xlabel("$r$")
-    #ax_density1.set_ylabel(r"$2 \pi r \rho(r)$")
-    #ax_density1.legend()
-    #fig_density1.tight_layout()
-    #fig_density1.savefig("density1_%s.pdf" % params_str)
+    ax_density1.set_xlabel("$r$")
+    ax_density1.set_ylabel(r"$2 \pi r \rho(r)$")
+    ax_density1.legend()
+    fig_density1.tight_layout()
+    fig_density1.savefig("density1_%s.pdf" % params_str)
 
-    #ax_density2.set_xlabel("$r$")
-    #ax_density2.set_ylabel(r"$\rho(r)$")
-    #ax_density2.legend()
-    #fig_density2.tight_layout()
-    #fig_density2.savefig("density2_%s.pdf" % params_str)
+    ax_density2.set_xlabel("$r$")
+    ax_density2.set_ylabel(r"$\rho(r)$")
+    ax_density2.legend()
+    fig_density2.tight_layout()
+    fig_density2.savefig("density2_%s.pdf" % params_str)
 
     plt.show()
