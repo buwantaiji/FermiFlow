@@ -1,5 +1,6 @@
 import torch
 torch.set_default_dtype(torch.float64)
+import pytest
 
 def test_HO2D_slaterdet():
     """ IMPORTANT TEST
@@ -146,6 +147,8 @@ def test_HO2D_sample():
     samples = freefermion.sample(orbitals_up, orbitals_down, batch)
     assert samples.shape == (*batch, n, 2)
 
+@pytest.mark.skipif(not torch.cuda.is_available(), 
+        reason="No GPU support in online test envionment")
 def test_HO2D_sample_multstates():
     """ Test the speed of MC sampling in the case of multiple states."""
     from orbitals import HO2D
@@ -160,7 +163,7 @@ def test_HO2D_sample_multstates():
     deltaE = 3
     batch, n = 8000, nup + ndown
 
-    states = ho2d.fermion_states(nup, ndown, deltaE)
+    states, _ = ho2d.fermion_states(nup, ndown, deltaE)
     print("\ndeltaE = %.1f, total number of states = %d" % (deltaE, len(states)))
     state_dist = Categorical(logits=torch.randn(len(states)))
     state_indices = state_dist.sample((batch,))
@@ -169,7 +172,7 @@ def test_HO2D_sample_multstates():
         print("%d:%d" % (idx, times), end=" ")
     print("\nbatch:", sum(times for times in state_indices_collection.values()))
 
-    device = torch.device("cuda:1")
+    device = torch.device("cuda:2")
     freefermion = FreeFermion(device=device)
 
     x = torch.randn(batch, n, 2, device=device)

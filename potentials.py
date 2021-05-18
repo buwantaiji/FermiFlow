@@ -38,14 +38,6 @@ class PairPotential(object):
         rij = self.rij(x)
         return self.v(rij).sum(dim=-1)
 
-class GaussianPairPotential(PairPotential):
-    def __init__(self, g, s):
-        super(GaussianPairPotential, self).__init__()
-        self.g, self.s = g, s
-
-    def v(self, rij):
-        return self.g / (np.pi * self.s**2) * torch.exp(- rij**2 / self.s**2)
-
 class CoulombPairPotential(PairPotential):
     def __init__(self, Z):
         super(CoulombPairPotential, self).__init__()
@@ -53,15 +45,3 @@ class CoulombPairPotential(PairPotential):
 
     def v(self, rij):
         return self.Z / rij
-
-if __name__ == "__main__":
-    g, s = 3.0, 0.5
-    gaussianpotential = GaussianPairPotential(g, s)
-    x = torch.randn(100, 7, 3)
-    rij = gaussianpotential.rij(x)
-    print(rij.shape)
-    V = gaussianpotential.V(x)
-    print(V.shape)
-
-    sp_potential = HO()
-    print(sp_potential.V(x).shape)

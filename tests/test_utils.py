@@ -34,55 +34,6 @@ def test_divergence_2():
     div_analytic = divergence_linear(x)
     assert torch.allclose(div, div_analytic)
 
-def test_divergence_FermiNet():
-    from utils import divergence
-    from equivariant_funs import FermiNet
-
-    batch, n, dim = 100, 10, 3
-    L, spsize, tpsize = 6, 7, 15
-    
-    v = FermiNet(n, dim, L, spsize, tpsize)
-    x = torch.randn(batch, n, dim, requires_grad=True)
-    div = divergence(v, x)
-    assert div.shape == (batch,)
-
-    P = torch.randperm(n)
-    Px = x[:, P, :]
-    Pdiv = divergence(v, Px)
-    assert torch.allclose(div, Pdiv)
-
-def test_divergences_time_FermiNet():
-    """
-        Test the performance of the two implementations of computing divergence.
-    """
-    from utils import divergence, divergence_2
-    from equivariant_funs import FermiNet
-    import time
-
-    batch, n, dim = 200, 10, 2
-    L, spsize, tpsize = 2, 16, 8
-    
-    v = FermiNet(n, dim, L, spsize, tpsize)
-    x = torch.randn(batch, n, dim, requires_grad=True)
-
-    ntest = 50
-
-    start = time.time()
-    for i in range(ntest):
-        div1 = divergence(v, x)
-        print("Computing divergence: %02d" % (i + 1))
-    end = time.time()
-    print("time1: ", (end - start) / ntest)
-
-    start = time.time()
-    for i in range(ntest):
-        div2 = divergence_2(v, x)
-        print("Computing divergence_2: %02d" % (i + 1))
-    end = time.time()
-    print("time2: ", (end - start) / ntest)
-
-    assert torch.allclose(div1, div2)
-
 def test_y_grad_laplacian():
     from utils import y_grad_laplacian
 

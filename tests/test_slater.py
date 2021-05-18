@@ -1,22 +1,6 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
-def test_FreeBosonHO():
-    from base_dist import FreeBosonHO
-    import numpy as np 
-
-    n, dim = 10, 3
-    freebosonho = FreeBosonHO(n, dim)
-    batch = 50
-    x = freebosonho.sample((batch,))
-    assert x.shape == (batch, n, dim)
-    log_prob = freebosonho.log_prob(x)
-
-    pi = torch.tensor(np.pi)
-
-    log_prob_analytic = (- x**2 - 0.5 * torch.log(pi)).sum(dim=(-2, -1))
-    assert torch.allclose(log_prob, log_prob_analytic)
-
 def test_slater_det():
     """ Test the antisymmetry property of the Slater determinant. """
     from orbitals import HO2D

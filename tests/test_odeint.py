@@ -142,7 +142,7 @@ def test_odeint_cnf():
     #assert torch.allclose(logp_odeint, logp, atol=5e-4)
 
     if torch.cuda.is_available():
-        device = torch.device("cuda:1")
+        device = torch.device("cuda:2")
         v_wrapper_cuda = v_wrapper.to(device=device)
         f_cuda = f.to(device=device)
         z_cuda = z.to(device=device)

@@ -2,7 +2,7 @@ import torch
 torch.set_default_dtype(torch.float64)
 import time, pytest
 
-device = torch.device("cuda:1")
+device = torch.device("cuda:2")
 
 @pytest.mark.skipif(not torch.cuda.is_available(), 
         reason="No GPU support in online test envionment")
