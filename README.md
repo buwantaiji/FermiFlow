@@ -1,4 +1,7 @@
-# FermiFlow
+<div align="center">
+<img align="middle" src="_assets/density2D.gif" width="400" alt="logo"/>
+<h1> FermiFlow </h1>
+</div>
 
 [![Build Status](https://travis-ci.com/buwantaiji/FermiFlow.svg?branch=github)](https://travis-ci.com/buwantaiji/FermiFlow)
 
