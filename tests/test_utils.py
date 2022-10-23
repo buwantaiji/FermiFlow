@@ -2,7 +2,7 @@ import torch
 torch.set_default_dtype(torch.float64)
 
 def test_divergence_1():
-    from utils import divergence
+    from src.utils import divergence
 
     def v(x):
         return x**2
@@ -17,7 +17,7 @@ def test_divergence_1():
     assert torch.allclose(div, div_analytic)
 
 def test_divergence_2():
-    from utils import divergence
+    from src.utils import divergence
 
     batch, dim = 20, 30
     W = torch.randn(dim, dim)
@@ -35,7 +35,7 @@ def test_divergence_2():
     assert torch.allclose(div, div_analytic)
 
 def test_y_grad_laplacian():
-    from utils import y_grad_laplacian
+    from src.utils import y_grad_laplacian
 
     batch, n, dim = 10, 5, 3
     w = torch.randn(batch, n, dim)

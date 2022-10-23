@@ -58,9 +58,9 @@ def test_odeint_2():
 
 @pytest.mark.skip(reason="The run time is too long.")
 def test_odeint_cnf():
-    from MLP import MLP
-    from equivariant_funs import Backflow
-    from NeuralODE.nnModule import solve_ivp_nnmodule
+    from src.MLP import MLP
+    from src.equivariant_funs import Backflow
+    from src.NeuralODE.nnModule import solve_ivp_nnmodule
     import time
     print("\n---- Comparison of various ODE solvers ----")
 

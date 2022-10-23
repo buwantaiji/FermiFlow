@@ -32,8 +32,8 @@ def test_matmul():
 @pytest.mark.skipif(not torch.cuda.is_available(), 
         reason="No GPU support in online test envionment")
 def test_Backflow():
-    from MLP import MLP
-    from equivariant_funs import Backflow
+    from src.MLP import MLP
+    from src.equivariant_funs import Backflow
     print("\n---- Test Backflow network ----")
 
     D_hidden = 200

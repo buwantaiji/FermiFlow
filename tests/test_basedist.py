@@ -11,8 +11,8 @@ def test_HO2D_slaterdet():
     LogAbsSlaterDet implemented in slater.py, and the class method
     FreeFermion.log_prob implemented in base_dist.py.
     """
-    from orbitals import HO2D
-    from utils import y_grad_laplacian
+    from src.orbitals import HO2D
+    from src.utils import y_grad_laplacian
 
     ho2d = HO2D()
     batch = 20
@@ -28,7 +28,7 @@ def test_HO2D_slaterdet():
         assert torch.allclose(Eloc, E * torch.ones(batch))
 
     """ Test a single Slater determinant. """
-    from slater import LogAbsSlaterDet
+    from src.slater import LogAbsSlaterDet
     log_abs_slaterdet = LogAbsSlaterDet.apply
 
     n = 5
@@ -43,7 +43,7 @@ def test_HO2D_slaterdet():
     assert torch.allclose(Eloc, sum(Es) * torch.ones(batch))
 
     """ Test a complete Fermion wavefunction composed of two Slater determinants. """
-    from base_dist import FreeFermion
+    from src.base_dist import FreeFermion
     nup, ndown = 3, 6
     orbitals_up, Es_up = ho2d.fermion_states_random(nup)
     orbitals_down, Es_down = ho2d.fermion_states_random(ndown)
@@ -67,8 +67,8 @@ def test_HO2D_slaterdet_multstates():
     LogAbsSlaterDetMultStates implemented in slater.py, and the class method
     FreeFermion.log_prob_multstates implemented in base_dist.py.
     """
-    from orbitals import HO2D
-    from utils import y_grad_laplacian
+    from src.orbitals import HO2D
+    from src.utils import y_grad_laplacian
     import random
 
     ho2d = HO2D()
@@ -80,7 +80,7 @@ def test_HO2D_slaterdet_multstates():
     print("batch:", batch)
 
     """ Test a single Slater determinant."""
-    from slater import LogAbsSlaterDetMultStates
+    from src.slater import LogAbsSlaterDetMultStates
     log_abs_slaterdet_multstates = LogAbsSlaterDetMultStates.apply
     n = 5
     states = []
@@ -104,7 +104,7 @@ def test_HO2D_slaterdet_multstates():
     assert torch.allclose(Eloc, Es)
     
     """ Test a complete Fermion wavefunction composed of two Slater determinants. """
-    from base_dist import FreeFermion
+    from src.base_dist import FreeFermion
     nup, ndown = 3, 6
     states = []
     Es = []
@@ -129,8 +129,8 @@ def test_HO2D_slaterdet_multstates():
     assert torch.allclose(Eloc, Es)
 
 def test_HO2D_sample():
-    from orbitals import HO2D
-    from base_dist import FreeFermion
+    from src.orbitals import HO2D
+    from src.base_dist import FreeFermion
     ho2d = HO2D()
 
     nup, ndown = 3, 6
@@ -151,8 +151,8 @@ def test_HO2D_sample():
         reason="No GPU support in online test envionment")
 def test_HO2D_sample_multstates():
     """ Test the speed of MC sampling in the case of multiple states."""
-    from orbitals import HO2D
-    from base_dist import FreeFermion
+    from src.orbitals import HO2D
+    from src.base_dist import FreeFermion
     from torch.distributions.categorical import Categorical
     from collections import Counter
     import time

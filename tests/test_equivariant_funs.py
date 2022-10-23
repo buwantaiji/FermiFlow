@@ -2,9 +2,9 @@ import torch
 torch.set_default_dtype(torch.float64)
 
 def test_Backflow():
-    from MLP import MLP
-    from equivariant_funs import Backflow
-    from utils import divergence
+    from src.MLP import MLP
+    from src.equivariant_funs import Backflow
+    from src.utils import divergence
     import time
 
     print("\n---- Backflow test ----")
@@ -36,8 +36,8 @@ def test_Backflow():
 
 def test_Backflow_offset():
     """ Test that the two-body backflow transformation yields correct result. """
-    from MLP import MLP
-    from equivariant_funs import Backflow
+    from src.MLP import MLP
+    from src.equivariant_funs import Backflow
 
     D_hidden = 100
     eta = MLP(1, D_hidden)

@@ -3,7 +3,7 @@ torch.set_default_dtype(torch.float64)
 
 def test_slater_det():
     """ Test the antisymmetry property of the Slater determinant. """
-    from orbitals import HO2D
+    from src.orbitals import HO2D
     ho2d = HO2D()
 
     def slater_det(orbitals, x):
@@ -68,10 +68,10 @@ def test_LogAbsSlaterDet():
     with the approach logabsslaterdet, which works by directly backwarding through 
     the torch.slogdet function.
     """
-    from orbitals import HO2D
-    from slater import LogAbsSlaterDet, logabsslaterdet
+    from src.orbitals import HO2D
+    from src.slater import LogAbsSlaterDet, logabsslaterdet
     log_abs_slaterdet = LogAbsSlaterDet.apply
-    from utils import y_grad_laplacian
+    from src.utils import y_grad_laplacian
 
     ho2d = HO2D()
     n = 3
@@ -97,10 +97,10 @@ def test_LogAbsSlaterDetMultStates():
     consistent with the approach logabsslaterdetmultstates, which works by directly 
     backwarding through the torch.slogdet function.
     """
-    from orbitals import HO2D
-    from slater import LogAbsSlaterDetMultStates, logabsslaterdetmultstates
+    from src.orbitals import HO2D
+    from src.slater import LogAbsSlaterDetMultStates, logabsslaterdetmultstates
     log_abs_slaterdet_multstates = LogAbsSlaterDetMultStates.apply
-    from utils import y_grad_laplacian
+    from src.utils import y_grad_laplacian
     import random
 
     ho2d = HO2D()

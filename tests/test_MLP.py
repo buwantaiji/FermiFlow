@@ -1,7 +1,7 @@
 import torch
 torch.set_default_dtype(torch.float64)
 
-from MLP import MLP
+from src.MLP import MLP
 
 def test_reproducibility():
     """ Test the initial parameters are the same by setting the same seed. """
